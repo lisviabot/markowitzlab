@@ -1,0 +1,1097 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="MarkowitzLab — Ferramenta educacional gratuita para otimização de portfólios via Teoria Moderna do Portfólio (Markowitz, 1952). Calcule a fronteira eficiente, carteira ótima, mínima variância e compare com o Ibovespa.">
+<meta name="keywords" content="teoria moderna do portfólio, markowitz, fronteira eficiente, otimização de carteiras, índice de sharpe, finanças, B3, TCC">
+<meta name="author" content="MarkowitzLab">
+<meta name="robots" content="index, follow">
+<meta property="og:type" content="website">
+<meta property="og:title" content="MarkowitzLab — Otimização de Portfólios">
+<meta property="og:description" content="Ferramenta educacional gratuita para otimização de portfólios via Teoria Moderna do Portfólio. Fronteira eficiente, Sharpe, heatmap de correlação e mais.">
+<meta property="og:image" content="https://via.placeholder.com/1200x630/0D0F14/4F7EFF?text=MarkowitzLab">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="MarkowitzLab — Otimização de Portfólios">
+<meta name="twitter:description" content="Fronteira eficiente, carteira ótima, heatmap de correlação e comparação com Ibovespa — tudo gratuito.">
+<title>MarkowitzLab — Teoria Moderna do Portfólio</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%230D0F14'/><polyline points='15,70 35,40 55,55 80,20' fill='none' stroke='%234F7EFF' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/><circle cx='80' cy='20' r='7' fill='%2300C896'/></svg>">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root{
+  --bg:#0D0F14; --bg2:#13161D; --bg3:#1A1E28; --bg4:#222737;
+  --border:#2A3045; --border2:#1E2438;
+  --text:#E8ECF5; --text2:#8892A8; --text3:#4E5870;
+  --accent:#4F7EFF; --accent2:#00C896; --warn:#FF8C42; --danger:#FF4D6A;
+  --purple:#A78BFA; --gold:#F5C842;
+  --radius:10px; --radius-sm:6px;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Inter',system-ui,-apple-system,sans-serif;font-size:14px;line-height:1.5;min-height:100vh;}
+
+/* LAYOUT */
+.app{display:flex;min-height:100vh;}
+.sidebar{width:224px;background:var(--bg2);border-right:1px solid var(--border);padding:0;display:flex;flex-direction:column;position:fixed;top:0;left:0;height:100vh;z-index:100;transition:transform .25s cubic-bezier(.4,0,.2,1);}
+.sidebar-header{padding:1.25rem 1.25rem 1rem;border-bottom:1px solid var(--border);}
+.logo{display:flex;align-items:center;gap:10px;margin-bottom:.5rem;}
+.logo-icon{width:32px;height:32px;background:var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0;}
+.logo-text{font-size:15px;font-weight:700;letter-spacing:-.4px;}
+.logo-text span{color:var(--accent);}
+.logo-sub{font-size:11px;color:var(--text3);margin-left:42px;line-height:1.4;}
+.nav-section{padding:.75rem 0;}
+.nav-label{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.1em;color:var(--text3);padding:.25rem 1.25rem .5rem;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:.55rem 1.25rem;color:var(--text2);cursor:pointer;font-size:13px;transition:all .15s;border-left:2px solid transparent;user-select:none;}
+.nav-item:hover{color:var(--text);background:var(--bg3);}
+.nav-item.active{color:var(--accent);background:rgba(79,126,255,.08);border-left-color:var(--accent);font-weight:500;}
+.nav-icon{font-size:15px;width:18px;text-align:center;flex-shrink:0;}
+.sidebar-footer{margin-top:auto;padding:1rem 1.25rem;border-top:1px solid var(--border);font-size:11px;color:var(--text3);line-height:1.5;}
+.sidebar-footer a{color:var(--text3);text-decoration:none;}
+.sidebar-footer a:hover{color:var(--text2);}
+
+.main{margin-left:224px;flex:1;min-height:100vh;}
+.topbar-mobile{display:none;background:var(--bg2);border-bottom:1px solid var(--border);padding:.75rem 1rem;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:200;}
+.topbar-logo{font-size:14px;font-weight:700;}
+.topbar-logo span{color:var(--accent);}
+.menu-btn{background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:4px 6px;border-radius:6px;line-height:1;}
+.menu-btn:hover{background:var(--bg3);}
+.overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:99;backdrop-filter:blur(2px);}
+
+.content{padding:1.75rem 2rem;max-width:1080px;}
+.page{display:none;}
+.page.active{display:block;animation:fadeUp .2s ease;}
+@keyframes fadeUp{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+/* TYPOGRAPHY */
+.page-title{font-size:20px;font-weight:700;letter-spacing:-.5px;margin-bottom:.2rem;}
+.page-sub{font-size:13px;color:var(--text2);margin-bottom:1.5rem;line-height:1.5;}
+.sec-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--text3);margin-bottom:.65rem;margin-top:1rem;}
+.sec-label:first-child{margin-top:0;}
+
+/* CARDS */
+.card{background:var(--bg2);border:1px solid var(--border);border-radius:var(--radius);padding:1.25rem;}
+.card+.card{margin-top:.75rem;}
+.card-title{font-size:13px;font-weight:600;margin-bottom:.75rem;color:var(--text);}
+.card-sm{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:.9rem 1rem;}
+
+/* METRIC CARDS */
+.mcard{background:var(--bg3);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:.85rem 1rem;}
+.mlabel{font-size:11px;color:var(--text2);margin-bottom:4px;font-weight:500;}
+.mval{font-size:22px;font-weight:700;letter-spacing:-.5px;line-height:1.1;}
+.msub{font-size:11px;color:var(--text3);margin-top:3px;}
+.c-blue{color:#4F7EFF;} .c-green{color:#00C896;} .c-amber{color:#FF8C42;} .c-red{color:#FF4D6A;} .c-purple{color:#A78BFA;} .c-gold{color:#F5C842;}
+
+/* GRIDS */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:.75rem;}
+
+/* INPUTS */
+input[type=text],input[type=number],select,textarea{
+  background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);
+  color:var(--text);font-size:13px;padding:7px 11px;width:100%;
+  font-family:inherit;outline:none;transition:border-color .15s;
+}
+input:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px rgba(79,126,255,.12);}
+input[type=number]{-moz-appearance:textfield;}
+input[type=number]::-webkit-inner-spin-button{-webkit-appearance:none;}
+select option{background:var(--bg3);}
+
+/* BUTTONS */
+.btn{background:var(--bg3);border:1px solid var(--border);border-radius:var(--radius-sm);color:var(--text);font-size:13px;padding:8px 16px;cursor:pointer;font-family:inherit;font-weight:500;white-space:nowrap;transition:all .15s;display:inline-flex;align-items:center;gap:6px;}
+.btn:hover{background:var(--bg4);border-color:var(--accent);}
+.btn:active{transform:scale(.98);}
+.btn-primary{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn-primary:hover{background:#3A6AFF;border-color:#3A6AFF;}
+.btn-success{background:var(--accent2);border-color:var(--accent2);color:#000;}
+.btn-sm{padding:5px 12px;font-size:12px;}
+.btn-xs{padding:3px 10px;font-size:11px;}
+.btn-del{background:none;border:none;cursor:pointer;color:var(--text3);font-size:18px;line-height:1;padding:2px 6px;transition:color .15s;}
+.btn-del:hover{color:var(--danger);}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+
+/* BADGES */
+.badge{display:inline-block;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;}
+.badge-ok{background:rgba(0,200,150,.15);color:var(--accent2);}
+.badge-err{background:rgba(255,77,106,.15);color:var(--danger);}
+.badge-info{background:rgba(79,126,255,.15);color:var(--accent);}
+.badge-warn{background:rgba(255,140,66,.15);color:var(--warn);}
+
+/* TABS */
+.tabs{display:flex;gap:0;border-bottom:1px solid var(--border);margin-bottom:1rem;overflow-x:auto;}
+.tab{background:none;border:none;border-bottom:2px solid transparent;padding:8px 16px;font-size:13px;cursor:pointer;color:var(--text2);font-weight:500;margin-bottom:-1px;font-family:inherit;white-space:nowrap;transition:all .15s;}
+.tab:hover{color:var(--text);}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tpanel{display:none;} .tpanel.active{display:block;}
+
+/* TABLE */
+.tbl{width:100%;border-collapse:collapse;font-size:13px;}
+.tbl th{padding:8px 12px;text-align:left;font-weight:600;color:var(--text2);font-size:11px;text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--border);}
+.tbl td{padding:8px 12px;border-bottom:1px solid rgba(42,48,69,.4);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:var(--bg3);}
+.win{color:var(--accent2);font-weight:600;}
+
+/* ASSET ROW */
+.arow{display:grid;grid-template-columns:108px 1fr 1fr 36px;gap:7px;align-items:center;margin-bottom:6px;}
+
+/* CORR */
+.corr-wrap{overflow-x:auto;}
+.corr-wrap table{border-collapse:collapse;font-size:12px;white-space:nowrap;}
+.corr-wrap th,.corr-wrap td{padding:4px 5px;text-align:center;}
+
+/* CHARTS */
+.ch{position:relative;width:100%;height:320px;}
+.ch-lg{position:relative;width:100%;height:380px;}
+.ch-sm{position:relative;width:100%;height:240px;}
+.ch-pie{position:relative;width:100%;height:240px;}
+
+/* LEGEND */
+.leg{display:flex;flex-wrap:wrap;gap:12px;font-size:12px;color:var(--text2);margin-top:.75rem;}
+.ldot{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:4px;vertical-align:middle;}
+
+/* DROP ZONE */
+.drop{border:2px dashed var(--border);border-radius:var(--radius);padding:2rem;text-align:center;color:var(--text2);cursor:pointer;transition:all .2s;}
+.drop:hover,.drop.drag{border-color:var(--accent);background:rgba(79,126,255,.05);color:var(--text);}
+
+/* PROFILE CARDS */
+.pcard{border:1px solid var(--border);border-radius:var(--radius);padding:1rem 1.1rem;cursor:pointer;transition:all .2s;}
+.pcard:hover{border-color:var(--accent);background:var(--bg3);}
+.pcard.sel{border-color:var(--accent);background:rgba(79,126,255,.07);}
+
+/* MISC */
+hr{border:none;border-top:1px solid var(--border);margin:1.25rem 0;}
+.err{color:var(--danger);font-size:12px;min-height:16px;}
+::-webkit-scrollbar{width:5px;height:5px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:10px;}
+
+/* DISCLAIMER BANNER */
+.disclaimer{background:rgba(255,140,66,.07);border:1px solid rgba(255,140,66,.25);border-radius:var(--radius-sm);padding:.75rem 1rem;font-size:12px;color:var(--text2);line-height:1.6;margin-bottom:1rem;}
+.disclaimer strong{color:var(--warn);}
+
+/* RESPONSIVE */
+@media(max-width:768px){
+  .sidebar{transform:translateX(-100%);}
+  .sidebar.open{transform:translateX(0);}
+  .overlay.show{display:block;}
+  .main{margin-left:0;}
+  .topbar-mobile{display:flex;}
+  .content{padding:1rem;}
+  .g2,.g3,.g4{grid-template-columns:1fr;}
+  .g2.k2{grid-template-columns:1fr 1fr;}
+  .arow{grid-template-columns:90px 1fr 1fr 32px;}
+  .tabs{gap:0;}
+  .tab{padding:8px 12px;font-size:12px;}
+  .ch,.ch-lg{height:260px;}
+  .page-title{font-size:17px;}
+}
+@media(max-width:400px){
+  .g2.k2{grid-template-columns:1fr;}
+  .mval{font-size:19px;}
+  .arow{grid-template-columns:80px 1fr 1fr 28px;}
+}
+@media print{
+  .sidebar,.topbar-mobile,.btn,.btn-row,.disclaimer{display:none!important;}
+  .main{margin-left:0!important;}
+  .content{padding:.5rem 1rem!important;}
+  .page{display:block!important;}
+  body,*{background:#fff!important;color:#000!important;border-color:#ddd!important;}
+  .mval{color:#000!important;}
+  .card,.mcard,.card-sm{background:#f8f8f8!important;}
+}
+</style>
+</head>
+<body>
+
+<!-- MOBILE TOPBAR -->
+<div class="topbar-mobile" role="banner">
+  <div class="topbar-logo">Markowitz<span>Lab</span></div>
+  <button class="menu-btn" onclick="toggleMenu()" aria-label="Abrir menu" aria-expanded="false" id="menu-btn">☰</button>
+</div>
+<div class="overlay" id="overlay" onclick="toggleMenu()" aria-hidden="true"></div>
+
+<!-- SIDEBAR -->
+<nav class="sidebar" id="sidebar" aria-label="Navegação principal">
+  <div class="sidebar-header">
+    <div class="logo">
+      <div class="logo-icon" aria-hidden="true">📊</div>
+      <div class="logo-text">Markowitz<span>Lab</span></div>
+    </div>
+    <div class="logo-sub">Teoria Moderna do Portfólio</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Dados</div>
+    <div class="nav-item active" onclick="goPage(0)" role="button" tabindex="0" aria-current="page"><span class="nav-icon" aria-hidden="true">⬆</span> Importação</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Análise</div>
+    <div class="nav-item" onclick="goPage(1)" role="button" tabindex="0"><span class="nav-icon" aria-hidden="true">▦</span> Dashboard</div>
+    <div class="nav-item" onclick="goPage(2)" role="button" tabindex="0"><span class="nav-icon" aria-hidden="true">∿</span> Fronteira Eficiente</div>
+    <div class="nav-item" onclick="goPage(3)" role="button" tabindex="0"><span class="nav-icon" aria-hidden="true">⇄</span> Comparação</div>
+    <div class="nav-item" onclick="goPage(4)" role="button" tabindex="0"><span class="nav-icon" aria-hidden="true">⊞</span> Heatmap</div>
+    <div class="nav-item" onclick="goPage(5)" role="button" tabindex="0"><span class="nav-icon" aria-hidden="true">🏦</span> vs Ibovespa</div>
+  </div>
+  <div class="nav-section">
+    <div class="nav-label">Configuração</div>
+    <div class="nav-item" onclick="goPage(6)" role="button" tabindex="0"><span class="nav-icon" aria-hidden="true">👤</span> Perfil do Investidor</div>
+    <div class="nav-item" onclick="goPage(7)" role="button" tabindex="0"><span class="nav-icon" aria-hidden="true">📄</span> Relatório & Export</div>
+  </div>
+  <div class="sidebar-footer">
+    <div style="margin-bottom:.4rem;font-weight:500;color:var(--text2);">MarkowitzLab v2.0</div>
+    <div>Ferramenta educacional gratuita baseada em Markowitz (1952).</div>
+    <div style="margin-top:.4rem;">⚠ Não constitui recomendação de investimento.</div>
+  </div>
+</nav>
+
+<!-- MAIN -->
+<main class="main" id="main">
+<div class="content">
+
+<!-- ===== PG 0 — DADOS ===== -->
+<div class="page active" id="pg0">
+  <h1 class="page-title">Dados & Importação</h1>
+  <p class="page-sub">Configure os ativos manualmente, importe cotações históricas do Yahoo Finance ou envie uma planilha Excel/CSV.</p>
+
+  <div class="disclaimer" role="note">
+    <strong>⚠ Aviso educacional:</strong> Esta ferramenta tem fins exclusivamente acadêmicos. Os resultados são baseados em dados históricos e estimativas fornecidas pelo usuário. Retornos passados não garantem resultados futuros. Não constitui recomendação de investimento.
+  </div>
+
+  <div class="tabs" role="tablist">
+    <button class="tab active" role="tab" aria-selected="true" onclick="stab(this,'tp-manual')">Manual</button>
+    <button class="tab" role="tab" aria-selected="false" onclick="stab(this,'tp-yahoo')">Yahoo Finance</button>
+    <button class="tab" role="tab" aria-selected="false" onclick="stab(this,'tp-excel')">Excel / CSV</button>
+  </div>
+
+  <!-- MANUAL -->
+  <div class="tpanel active" id="tp-manual" role="tabpanel">
+    <div class="card">
+      <div class="sec-label">Ativos do portfólio</div>
+      <div class="arow" style="margin-bottom:4px;">
+        <span style="font-size:11px;color:var(--text3);">Ticker</span>
+        <span style="font-size:11px;color:var(--text3);">Retorno (%/ano)</span>
+        <span style="font-size:11px;color:var(--text3);">Volatilidade (%/ano)</span>
+        <span></span>
+      </div>
+      <div id="arows"></div>
+      <button class="btn btn-xs" onclick="addA()" style="margin-top:.5rem;">+ Adicionar ativo</button>
+      <hr>
+      <div class="sec-label">Parâmetros globais</div>
+      <div class="g2 k2" style="gap:12px;">
+        <div>
+          <label for="rf" style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px;">Taxa livre de risco (%/ano)</label>
+          <input type="number" id="rf" value="10.5" step="0.1" min="0" max="100" aria-label="Taxa livre de risco">
+          <div style="font-size:11px;color:var(--text3);margin-top:3px;">Selic atual ≈ 10,5% a.a.</div>
+        </div>
+        <div>
+          <label for="ibov-ret" style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px;">Retorno Ibovespa (%/ano, ref.)</label>
+          <input type="number" id="ibov-ret" value="14.0" step="0.1" aria-label="Retorno do Ibovespa">
+          <div style="font-size:11px;color:var(--text3);margin-top:3px;">Média histórica ≈ 13–15% a.a.</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="sec-label">Matriz de correlação</div>
+      <div class="corr-wrap" id="corrmat"></div>
+      <p style="font-size:11px;color:var(--text3);margin-top:.6rem;">Preencha os valores acima da diagonal (de −1 a 1). A matriz é simétrica automaticamente.</p>
+    </div>
+    <div class="btn-row" style="margin-top:1rem;">
+      <button class="btn btn-primary" onclick="runAll()">⚡ Calcular portfólio</button>
+      <span class="err" id="gerr" role="alert" aria-live="polite"></span>
+    </div>
+    <div id="cstatus" style="font-size:12px;color:var(--text2);margin-top:.6rem;min-height:20px;" aria-live="polite"></div>
+  </div>
+
+  <!-- YAHOO -->
+  <div class="tpanel" id="tp-yahoo" role="tabpanel">
+    <div class="card">
+      <div class="sec-label">Importar via Yahoo Finance</div>
+      <p style="font-size:12px;color:var(--text2);margin-bottom:1rem;line-height:1.7;">
+        Digite os tickers separados por vírgula.<br>
+        🇧🇷 <strong>Ações B3:</strong> adicione <code style="background:var(--bg4);padding:1px 5px;border-radius:3px;">.SA</code> (ex: PETR4.SA, VALE3.SA)<br>
+        🇺🇸 <strong>EUA:</strong> sem sufixo (ex: AAPL, MSFT, TSLA)<br>
+        Os retornos e volatilidades são calculados automaticamente a partir de preços mensais históricos.
+      </p>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.75rem;">
+        <input type="text" id="ytk" placeholder="PETR4.SA, VALE3.SA, ITUB4.SA, WEGE3.SA" style="flex:1;min-width:200px;" aria-label="Tickers para importação">
+        <select id="yper" style="width:120px;" aria-label="Período histórico">
+          <option value="1y">1 ano</option>
+          <option value="2y" selected>2 anos</option>
+          <option value="3y">3 anos</option>
+          <option value="5y">5 anos</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="importYahoo()">⬇ Importar dados históricos</button>
+      <div id="yst" style="margin-top:.75rem;font-size:12px;min-height:20px;" aria-live="polite"></div>
+      <div style="margin-top:.75rem;padding:.75rem;background:var(--bg4);border-radius:var(--radius-sm);font-size:11px;color:var(--text3);line-height:1.7;">
+        ℹ Os dados são obtidos via proxy público (allorigins.win → Yahoo Finance). Disponibilidade pode variar. Para uso em produção, recomenda-se API própria.
+      </div>
+    </div>
+  </div>
+
+  <!-- EXCEL -->
+  <div class="tpanel" id="tp-excel" role="tabpanel">
+    <div class="card">
+      <div class="sec-label">Importar planilha Excel ou CSV</div>
+      <div class="drop" id="dropz" onclick="document.getElementById('xfile').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)" role="button" tabindex="0" aria-label="Área para upload de arquivo">
+        <div style="font-size:32px;margin-bottom:.5rem;" aria-hidden="true">📄</div>
+        <div style="font-size:14px;font-weight:600;margin-bottom:4px;">Arraste o arquivo aqui</div>
+        <div style="font-size:12px;">ou clique para selecionar — .xlsx, .xls, .csv</div>
+      </div>
+      <input type="file" id="xfile" accept=".xlsx,.xls,.csv" style="display:none;" onchange="handleXFile(event)" aria-label="Selecionar arquivo Excel ou CSV">
+      <div style="margin-top:.75rem;background:var(--bg4);border-radius:var(--radius-sm);padding:.9rem;font-size:12px;color:var(--text2);line-height:1.9;">
+        <strong>Formato esperado da planilha:</strong><br>
+        Coluna A: Ticker (ex: PETR4)<br>
+        Coluna B: Retorno esperado em % ao ano (ex: 18.5)<br>
+        Coluna C: Volatilidade em % ao ano (ex: 32.0)<br>
+        Colunas D+: Correlações entre ativos (opcional)
+      </div>
+      <div id="xst" style="margin-top:.75rem;font-size:12px;min-height:20px;" aria-live="polite"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===== PG 1 — DASHBOARD ===== -->
+<div class="page" id="pg1">
+  <h1 class="page-title">Dashboard</h1>
+  <p class="page-sub">Visão geral dos portfólios otimizados.</p>
+  <div id="d-empty" style="text-align:center;padding:3rem;color:var(--text2);">
+    <div style="font-size:40px;margin-bottom:.75rem;" aria-hidden="true">⚡</div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:.5rem;">Nenhum cálculo realizado</div>
+    <div style="font-size:13px;margin-bottom:1rem;">Configure os ativos e clique em "Calcular portfólio".</div>
+    <button class="btn btn-primary" onclick="goPage(0)">Ir para Dados</button>
+  </div>
+  <div id="d-content" style="display:none;">
+    <div class="sec-label">Carteira ótima — Máximo Índice de Sharpe</div>
+    <div class="g4" id="d-metrics" style="margin-bottom:1rem;"></div>
+    <div class="g2" style="margin-bottom:.75rem;">
+      <div class="card"><div class="card-title">Alocação — Máx. Sharpe</div><div class="ch-pie"><canvas id="pie-opt" role="img" aria-label="Gráfico de pizza da carteira de máximo Sharpe"></canvas></div><div class="leg" id="leg-popt"></div></div>
+      <div class="card"><div class="card-title">Alocação — Mín. Variância</div><div class="ch-pie"><canvas id="pie-mv" role="img" aria-label="Gráfico de pizza da carteira de mínima variância"></canvas></div><div class="leg" id="leg-pmv"></div></div>
+    </div>
+    <div class="card"><div class="card-title">Resumo comparativo</div><div style="overflow-x:auto;"><table class="tbl" id="d-sumtbl"></table></div></div>
+  </div>
+</div>
+
+<!-- ===== PG 2 — FRONTEIRA ===== -->
+<div class="page" id="pg2">
+  <h1 class="page-title">Fronteira Eficiente</h1>
+  <p class="page-sub">Curva de Markowitz com Linha de Mercado de Capitais (CML). Cada ponto representa um portfólio com a menor volatilidade possível para dado nível de retorno.</p>
+  <div id="f-empty" style="text-align:center;padding:3rem;color:var(--text2);">
+    <div style="font-size:40px;margin-bottom:.75rem;" aria-hidden="true">∿</div>
+    <button class="btn btn-primary" onclick="goPage(0)">Calcular portfólio</button>
+  </div>
+  <div id="f-content" style="display:none;">
+    <div class="card"><div class="ch-lg"><canvas id="ef-chart" role="img" aria-label="Gráfico da fronteira eficiente"></canvas></div><div class="leg" id="ef-leg"></div></div>
+    <div class="card" style="margin-top:.75rem;"><div class="card-title">Composição ao longo da fronteira</div><div class="ch"><canvas id="alloc-chart" role="img" aria-label="Composição dos portfólios ao longo da fronteira eficiente"></canvas></div><div class="leg" id="alloc-leg"></div></div>
+  </div>
+</div>
+
+<!-- ===== PG 3 — COMPARAÇÃO ===== -->
+<div class="page" id="pg3">
+  <h1 class="page-title">Comparação de Portfólios</h1>
+  <p class="page-sub">Máximo Sharpe × Mínima Variância × Pesos Iguais — métricas, alocações e posicionamento risco-retorno.</p>
+  <div id="c-empty" style="text-align:center;padding:3rem;color:var(--text2);">
+    <button class="btn btn-primary" onclick="goPage(0)">Calcular portfólio</button>
+  </div>
+  <div id="c-content" style="display:none;">
+    <div class="card"><div class="ch"><canvas id="cmp-chart" role="img" aria-label="Comparação risco-retorno dos três portfólios"></canvas></div></div>
+    <div class="card" style="margin-top:.75rem;"><div style="overflow-x:auto;"><table class="tbl" id="cmp-tbl"></table></div></div>
+    <div class="card" style="margin-top:.75rem;"><div class="card-title">Alocações comparadas</div><div class="ch"><canvas id="cmp-alloc" role="img" aria-label="Alocações dos três portfólios por ativo"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ===== PG 4 — HEATMAP ===== -->
+<div class="page" id="pg4">
+  <h1 class="page-title">Heatmap de Correlação</h1>
+  <p class="page-sub">Visualize as correlações entre todos os ativos. Azul = correlação positiva, vermelho = negativa. Quanto menor a correlação, maior o benefício da diversificação.</p>
+  <div id="h-empty" style="text-align:center;padding:3rem;color:var(--text2);">
+    <button class="btn btn-primary" onclick="goPage(0)">Calcular portfólio</button>
+  </div>
+  <div id="h-content" style="display:none;">
+    <div class="card">
+      <div id="hmap" style="overflow-x:auto;" role="img" aria-label="Heatmap de correlação entre ativos"></div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:11px;color:var(--text3);margin-top:1rem;" aria-label="Legenda do heatmap">
+        <span style="background:linear-gradient(to right,#FF4D6A,#2A3045,#4F7EFF);width:120px;height:8px;border-radius:4px;display:inline-block;" aria-hidden="true"></span>
+        <span>−1 (negativa)</span><span style="flex:1"></span><span>+1 (positiva)</span>
+      </div>
+    </div>
+    <div class="card" style="margin-top:.75rem;"><div class="card-title">Correlações — valores detalhados</div><div style="overflow-x:auto;"><table class="tbl" id="corr-tbl"></table></div></div>
+  </div>
+</div>
+
+<!-- ===== PG 5 — IBOVESPA ===== -->
+<div class="page" id="pg5">
+  <h1 class="page-title">Comparação com Ibovespa</h1>
+  <p class="page-sub">Performance e métricas dos portfólios otimizados versus o índice de referência da B3.</p>
+  <div id="ib-empty" style="text-align:center;padding:3rem;color:var(--text2);">
+    <button class="btn btn-primary" onclick="goPage(0)">Calcular portfólio</button>
+  </div>
+  <div id="ib-content" style="display:none;">
+    <div class="g4" id="ib-metrics" style="margin-bottom:.75rem;"></div>
+    <div class="card"><div class="ch"><canvas id="ib-scatter" role="img" aria-label="Comparação risco-retorno com Ibovespa"></canvas></div><div class="leg" id="ib-leg"></div></div>
+    <div class="card" style="margin-top:.75rem;"><div style="overflow-x:auto;"><table class="tbl" id="ib-tbl"></table></div></div>
+  </div>
+</div>
+
+<!-- ===== PG 6 — PERFIL ===== -->
+<div class="page" id="pg6">
+  <h1 class="page-title">Perfil do Investidor</h1>
+  <p class="page-sub">Identifique seu perfil e descubra qual portfólio se adequa melhor aos seus objetivos e tolerância ao risco.</p>
+  <div class="g3" style="margin-bottom:1rem;">
+    <div class="pcard" id="pc-con" onclick="selProfile('con',this)" role="button" tabindex="0" aria-pressed="false">
+      <div style="font-size:11px;font-weight:600;color:var(--accent2);margin-bottom:.35rem;">🛡 CONSERVADOR</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:.35rem;">Preservação de capital</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.5;">Prioriza segurança. Aceita retornos menores em troca de menor volatilidade. Horizonte de curto a médio prazo.</div>
+    </div>
+    <div class="pcard" id="pc-mod" onclick="selProfile('mod',this)" role="button" tabindex="0" aria-pressed="false">
+      <div style="font-size:11px;font-weight:600;color:var(--gold);margin-bottom:.35rem;">⚖ MODERADO</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:.35rem;">Equilíbrio risco-retorno</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.5;">Busca crescimento consistente com risco controlado. Combina segurança e oportunidade. Médio prazo.</div>
+    </div>
+    <div class="pcard" id="pc-arr" onclick="selProfile('arr',this)" role="button" tabindex="0" aria-pressed="false">
+      <div style="font-size:11px;font-weight:600;color:var(--danger);margin-bottom:.35rem;">🚀 ARROJADO</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:.35rem;">Maximização de retorno</div>
+      <div style="font-size:12px;color:var(--text2);line-height:1.5;">Aceita alta volatilidade em busca do maior retorno possível. Horizonte de longo prazo.</div>
+    </div>
+  </div>
+  <div id="prof-empty" style="text-align:center;padding:1.5rem;color:var(--text3);font-size:13px;" role="status">Selecione um perfil acima para ver a recomendação personalizada.</div>
+  <div id="prof-result" style="display:none;">
+    <div class="card"><div id="prof-rec"></div></div>
+    <div class="card" style="margin-top:.75rem;"><div class="card-title">Alocação recomendada</div><div class="ch-pie"><canvas id="pie-prof" role="img" aria-label="Alocação recomendada para o perfil selecionado"></canvas></div><div class="leg" id="leg-prof"></div></div>
+  </div>
+</div>
+
+<!-- ===== PG 7 — RELATÓRIO ===== -->
+<div class="page" id="pg7">
+  <h1 class="page-title">Relatório & Exportação</h1>
+  <p class="page-sub">Gere um relatório completo para apresentação do TCC ou exporte os dados brutos.</p>
+  <div id="r-empty" style="text-align:center;padding:3rem;color:var(--text2);">
+    <div style="font-size:40px;margin-bottom:.75rem;" aria-hidden="true">📄</div>
+    <div style="font-size:15px;font-weight:600;margin-bottom:.5rem;">Calcule o portfólio antes de exportar</div>
+    <button class="btn btn-primary" onclick="goPage(0)">Ir para Dados</button>
+  </div>
+  <div id="r-content" style="display:none;">
+    <div class="card">
+      <div class="sec-label">Personalizar relatório</div>
+      <div class="g2" style="gap:12px;margin-bottom:.75rem;">
+        <div><label for="r-author" style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px;">Nome do autor</label><input type="text" id="r-author" placeholder="Seu nome completo"></div>
+        <div><label for="r-inst" style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px;">Instituição</label><input type="text" id="r-inst" placeholder="Universidade / Faculdade"></div>
+      </div>
+      <div style="margin-bottom:.75rem;"><label for="r-title" style="font-size:11px;color:var(--text2);display:block;margin-bottom:4px;">Título do trabalho</label><input type="text" id="r-title" placeholder="Ex: Análise de Portfólio via Teoria Moderna do Portfólio"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" onclick="genHTML()">📄 Gerar relatório (HTML → PDF)</button>
+        <button class="btn" onclick="expCSV()">📊 Exportar CSV</button>
+        <button class="btn" onclick="expJSON()">⚙ Exportar JSON</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:.75rem;line-height:1.6;">O relatório HTML abre no navegador. Use <kbd style="background:var(--bg4);padding:1px 5px;border-radius:3px;">Ctrl+P</kbd> → "Salvar como PDF" para gerar o arquivo PDF final.</div>
+    </div>
+    <div class="card" style="margin-top:.75rem;">
+      <div class="card-title">Pré-visualização do relatório</div>
+      <div id="r-preview" style="font-size:12px;color:var(--text2);line-height:1.9;background:var(--bg3);border-radius:var(--radius-sm);padding:1rem;"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /content -->
+</main>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+const PAL=['#4F7EFF','#00C896','#FF8C42','#A78BFA','#F5C842','#FF4D6A','#5DCAA5','#FF8CE8'];
+let assets=[
+  {name:'PETR4.SA',ret:18,vol:32},
+  {name:'VALE3.SA',ret:14,vol:28},
+  {name:'ITUB4.SA',ret:12,vol:22},
+  {name:'WEGE3.SA',ret:16,vol:24},
+];
+let corrM=[[1,.35,.20,.15],[.35,1,.25,.10],[.20,.25,1,.30],[.15,.10,.30,1]];
+let optW=[],mvW=[],eqW=[],frontier=[];
+let charts={};
+let hasRes=false;
+
+// ============================================================
+// NAVIGATION
+// ============================================================
+function goPage(i){
+  document.querySelectorAll('.page').forEach((p,j)=>p.classList.toggle('active',j===i));
+  document.querySelectorAll('.nav-item').forEach((n,j)=>{
+    n.classList.toggle('active',j===i);
+    n.setAttribute('aria-current',j===i?'page':'false');
+  });
+  if(window.innerWidth<=768) closeSidebar();
+  window.scrollTo(0,0);
+}
+function toggleMenu(){
+  const s=document.getElementById('sidebar');
+  const o=document.getElementById('overlay');
+  const b=document.getElementById('menu-btn');
+  const open=s.classList.toggle('open');
+  o.classList.toggle('show',open);
+  b.setAttribute('aria-expanded',open);
+}
+function closeSidebar(){
+  document.getElementById('sidebar').classList.remove('open');
+  document.getElementById('overlay').classList.remove('show');
+  document.getElementById('menu-btn').setAttribute('aria-expanded','false');
+}
+function stab(btn,id){
+  const par=btn.closest('.page')||document.body;
+  par.querySelectorAll('.tabs .tab').forEach(t=>{t.classList.remove('active');t.setAttribute('aria-selected','false');});
+  btn.classList.add('active');btn.setAttribute('aria-selected','true');
+  par.querySelectorAll('.tpanel').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+// keyboard nav for nav items
+document.querySelectorAll('.nav-item').forEach((el,i)=>{
+  el.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();goPage(i);}});
+});
+
+// ============================================================
+// ASSET MANAGEMENT
+// ============================================================
+function renderA(){
+  const c=document.getElementById('arows');c.innerHTML='';
+  assets.forEach((a,i)=>{
+    const d=document.createElement('div');d.className='arow';
+    d.innerHTML=`<input type="text" value="${a.name}" placeholder="TICKER" aria-label="Ticker do ativo ${i+1}" onchange="assets[${i}].name=this.value;syncC();renderCorr();">
+    <input type="number" value="${a.ret}" step="0.1" aria-label="Retorno do ativo ${i+1}" onchange="assets[${i}].ret=parseFloat(this.value)||0">
+    <input type="number" value="${a.vol}" step="0.1" min="0.1" aria-label="Volatilidade do ativo ${i+1}" onchange="assets[${i}].vol=parseFloat(this.value)||1">
+    <button class="btn-del" onclick="delA(${i})" aria-label="Remover ${a.name}">×</button>`;
+    c.appendChild(d);
+  });
+  syncC();renderCorr();
+}
+function syncC(){
+  const n=assets.length;
+  while(corrM.length<n){corrM.forEach(r=>{while(r.length<n)r.push(.2);});const nr=new Array(n).fill(.2);nr[n-1]=1;corrM.push(nr);}
+  if(corrM.length>n){corrM=corrM.slice(0,n).map(r=>r.slice(0,n));}
+  for(let i=0;i<n;i++)corrM[i][i]=1;
+}
+function renderCorr(){
+  const n=assets.length;const cw=Math.max(52,Math.floor(480/n));
+  let h=`<table role="grid" aria-label="Matriz de correlação"><tr><th scope="col" style="padding:4px 8px;"></th>`;
+  assets.forEach(a=>h+=`<th scope="col" style="font-size:11px;color:var(--text2);font-weight:600;padding:4px 5px;">${a.name}</th>`);
+  h+=`</tr>`;
+  for(let i=0;i<n;i++){
+    h+=`<tr><th scope="row" style="font-size:11px;color:var(--text2);font-weight:600;padding:4px 8px;text-align:left;">${assets[i].name}</th>`;
+    for(let j=0;j<n;j++){
+      if(i===j) h+=`<td style="text-align:center;font-size:12px;color:var(--text3);padding:4px 5px;">1,00</td>`;
+      else if(j>i) h+=`<td style="padding:2px 3px;"><input type="number" value="${corrM[i][j].toFixed(2)}" min="-1" max="1" step="0.01" style="width:${cw}px;text-align:center;padding:5px;" aria-label="Correlação ${assets[i].name} × ${assets[j].name}" onchange="setC(${i},${j},this.value)"></td>`;
+      else h+=`<td style="text-align:center;font-size:12px;color:var(--text2);padding:4px 5px;">${corrM[i][j].toFixed(2)}</td>`;
+    }
+    h+=`</tr>`;
+  }
+  document.getElementById('corrmat').innerHTML=h+`</table>`;
+}
+function setC(i,j,v){const x=Math.max(-1,Math.min(1,parseFloat(v)||0));corrM[i][j]=x;corrM[j][i]=x;renderCorr();}
+function addA(){assets.push({name:`ATIVO${assets.length+1}`,ret:10,vol:20});renderA();}
+function delA(i){if(assets.length<=2){showErr('Mínimo de 2 ativos necessários.');return;}assets.splice(i,1);corrM.splice(i,1);corrM.forEach(r=>r.splice(i,1));renderA();}
+function showErr(m){const e=document.getElementById('gerr');e.textContent=m;setTimeout(()=>e.textContent='',5000);}
+
+// ============================================================
+// IMPORT — YAHOO FINANCE
+// ============================================================
+async function importYahoo(){
+  const raw=document.getElementById('ytk').value.trim();
+  if(!raw){showErr('Digite ao menos um ticker.');return;}
+  const tickers=raw.split(',').map(t=>t.trim().toUpperCase()).filter(Boolean);
+  const period=document.getElementById('yper').value;
+  const st=document.getElementById('yst');
+  st.innerHTML=`<span class="badge badge-info">⏳ Buscando ${tickers.length} ativo(s)...</span>`;
+  const results=[];
+  for(const tk of tickers){
+    try{
+      const url=`https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(tk)}?interval=1mo&range=${period}`;
+      const r=await fetch(`https://api.allorigins.win/get?url=${encodeURIComponent(url)}`);
+      const j=await r.json();const d=JSON.parse(j.contents);
+      const closes=d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+      if(!closes||closes.length<3)throw new Error('sem dados suficientes');
+      const v=closes.filter(x=>x!=null&&!isNaN(x));
+      const rets=[];for(let i=1;i<v.length;i++)rets.push((v[i]-v[i-1])/v[i-1]);
+      const mean=rets.reduce((a,b)=>a+b,0)/rets.length;
+      const variance=rets.reduce((a,b)=>a+(b-mean)**2,0)/rets.length;
+      results.push({name:tk,ret:parseFloat((mean*12*100).toFixed(1)),vol:parseFloat((Math.sqrt(variance*12)*100).toFixed(1)),rets,error:false});
+    }catch(e){results.push({name:tk,error:true,rets:[],msg:e.message});}
+  }
+  const ok=results.filter(r=>!r.error);const fail=results.filter(r=>r.error);
+  if(ok.length>0){
+    assets=ok.map(r=>({name:r.name,ret:r.ret,vol:r.vol}));
+    const n=ok.length;
+    corrM=Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>{
+      if(i===j)return 1;
+      const ri=ok[i].rets,rj=ok[j].rets,len=Math.min(ri.length,rj.length);
+      const mi=ri.slice(-len).reduce((a,b)=>a+b,0)/len;
+      const mj=rj.slice(-len).reduce((a,b)=>a+b,0)/len;
+      const cov=ri.slice(-len).reduce((s,v,k)=>s+(v-mi)*(rj[rj.length-len+k]-mj),0)/len;
+      const si=Math.sqrt(ri.slice(-len).reduce((s,v)=>s+(v-mi)**2,0)/len);
+      const sj=Math.sqrt(rj.slice(-len).reduce((s,v)=>s+(v-mj)**2,0)/len);
+      return si*sj===0?0:parseFloat(Math.max(-1,Math.min(1,cov/(si*sj))).toFixed(2));
+    }));
+    renderA();
+  }
+  let msg=ok.length>0?`<span class="badge badge-ok">✓ ${ok.length} ativo(s) importado(s)</span> `:'';
+  if(fail.length>0)msg+=`<span class="badge badge-err">✗ Falhou: ${fail.map(r=>r.name).join(', ')}</span>`;
+  st.innerHTML=msg;
+}
+
+// ============================================================
+// IMPORT — EXCEL / CSV
+// ============================================================
+function handleDrop(e){e.preventDefault();document.getElementById('dropz').classList.remove('drag');const f=e.dataTransfer.files[0];if(f)procFile(f);}
+function handleXFile(e){const f=e.target.files[0];if(f)procFile(f);}
+function procFile(file){
+  const st=document.getElementById('xst');
+  st.innerHTML=`<span class="badge badge-info">⏳ Lendo arquivo...</span>`;
+  const reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      let rows=[];
+      if(file.name.endsWith('.csv')){
+        const text=new TextDecoder().decode(e.target.result);
+        rows=text.split('\n').map(r=>r.split(/[,;]/).map(c=>c.trim().replace(/"/g,'')));
+      }else{
+        const wb=XLSX.read(e.target.result,{type:'array'});
+        const ws=wb.Sheets[wb.SheetNames[0]];
+        rows=XLSX.utils.sheet_to_json(ws,{header:1});
+      }
+      const start=isNaN(parseFloat(rows[0]?.[1]))?1:0;
+      const na=[];
+      for(let i=start;i<rows.length;i++){
+        const r=rows[i];if(!r||!r[0])continue;
+        const ret=parseFloat(r[1]);const vol=parseFloat(r[2]);
+        if(!isNaN(ret)&&!isNaN(vol))na.push({name:String(r[0]).trim(),ret,vol});
+      }
+      if(na.length<2){st.innerHTML=`<span class="badge badge-err">Dados insuficientes. Verifique o formato.</span>`;return;}
+      assets=na;const n=assets.length;
+      corrM=Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>{
+        if(i===j)return 1;
+        const r=rows[i+start];const v=parseFloat(r?.[3+j]);
+        return(!isNaN(v)&&v>=-1&&v<=1)?v:.2;
+      }));
+      renderA();
+      st.innerHTML=`<span class="badge badge-ok">✓ ${na.length} ativos importados com sucesso</span>`;
+    }catch(err){st.innerHTML=`<span class="badge badge-err">Erro ao ler arquivo: ${err.message}</span>`;}
+  };
+  reader.readAsArrayBuffer(file);
+}
+
+// ============================================================
+// OPTIMIZATION ENGINE
+// ============================================================
+function buildCov(){const n=assets.length;return Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>corrM[i][j]*(assets[i].vol/100)*(assets[j].vol/100)));}
+function pSt(w,cov){
+  let ret=0;for(let i=0;i<w.length;i++)ret+=w[i]*(assets[i].ret/100);
+  let v=0;for(let i=0;i<w.length;i++)for(let j=0;j<w.length;j++)v+=w[i]*w[j]*cov[i][j];
+  return{ret,vol:Math.sqrt(Math.max(0,v))};
+}
+function norm(w){const s=w.reduce((a,b)=>a+b,0);return s>0?w.map(x=>x/s):w;}
+function rnd(n){return norm(Array.from({length:n},()=>Math.random()));}
+function optSh(cov,rf,it=12000){
+  const n=assets.length;let bs=-Infinity,bw=null;
+  for(let i=0;i<it;i++){const w=rnd(n);const s=pSt(w,cov);const sh=(s.ret-rf)/s.vol;if(sh>bs){bs=sh;bw=w;}}
+  for(let s=0;s<500;s++)for(let i=0;i<n;i++){let w=[...bw];w[i]+=(Math.random()-.5)*.04;w=norm(w.map(x=>Math.max(0,x)));const st=pSt(w,cov);const sh=(st.ret-rf)/st.vol;if(sh>bs){bs=sh;bw=w;}}
+  return bw;
+}
+function optMV(cov,it=12000){
+  const n=assets.length;let bv=Infinity,bw=null;
+  for(let i=0;i<it;i++){const w=rnd(n);const s=pSt(w,cov);if(s.vol<bv){bv=s.vol;bw=w;}}
+  for(let s=0;s<500;s++)for(let i=0;i<n;i++){let w=[...bw];w[i]+=(Math.random()-.5)*.03;w=norm(w.map(x=>Math.max(0,x)));const st=pSt(w,cov);if(st.vol<bv){bv=st.vol;bw=w;}}
+  return bw;
+}
+function buildFr(cov,nPts=55){
+  const n=assets.length;
+  const minR=Math.min(...assets.map(a=>a.ret/100)),maxR=Math.max(...assets.map(a=>a.ret/100));
+  const pts=[];
+  for(let k=0;k<=nPts;k++){
+    const target=minR+(maxR-minR)*k/nPts;
+    let bV=Infinity,bW=null;
+    for(let i=0;i<2500;i++){const w=rnd(n);const s=pSt(w,cov);const p=Math.abs(s.ret-target)*50;if(s.vol+p<bV){bV=s.vol+p;bW=w;}}
+    for(let s=0;s<120;s++)for(let i=0;i<n;i++){let w=[...bW];w[i]+=(Math.random()-.5)*.025;w=norm(w.map(x=>Math.max(0,x)));const st=pSt(w,cov);const p=Math.abs(st.ret-target)*50;if(st.vol+p<bV){bV=st.vol+p;bW=w;}}
+    const s=pSt(bW,cov);pts.push({vol:s.vol,ret:s.ret,w:bW});
+  }
+  return pts;
+}
+
+function runAll(){
+  const n=assets.length;
+  for(let i=0;i<n;i++){
+    if(!assets[i].name.trim()){showErr(`Ativo ${i+1} precisa de um nome.`);return;}
+    if(assets[i].vol<=0){showErr(`Volatilidade de "${assets[i].name}" deve ser maior que 0.`);return;}
+  }
+  const st=document.getElementById('cstatus');
+  st.innerHTML=`<span class="badge badge-info">⚙ Otimizando portfólios... (alguns segundos)</span>`;
+  setTimeout(()=>{
+    const rf=parseFloat(document.getElementById('rf').value||0)/100;
+    const cov=buildCov();
+    optW=optSh(cov,rf);
+    mvW=optMV(cov);
+    eqW=Array(n).fill(1/n);
+    frontier=buildFr(cov);
+    hasRes=true;
+    st.innerHTML=`<span class="badge badge-ok">✓ Calculado com sucesso — ${new Date().toLocaleTimeString('pt-BR')}</span>`;
+    buildDash(cov,rf);buildFront(cov,rf);buildCmp(cov,rf);buildHeat();buildIbov(cov,rf);buildReport();
+  },40);
+}
+
+// ============================================================
+// CHART HELPERS
+// ============================================================
+const gridColor='rgba(255,255,255,.06)';
+const tickColor='#8892A8';
+const baseScales={
+  x:{grid:{color:gridColor},ticks:{color:tickColor}},
+  y:{grid:{color:gridColor},ticks:{color:tickColor}}
+};
+function dChart(id){if(charts[id]){charts[id].destroy();delete charts[id];}}
+function drawPie(cid,w,legId){
+  dChart(cid);
+  charts[cid]=new Chart(document.getElementById(cid).getContext('2d'),{
+    type:'doughnut',
+    data:{labels:assets.map(a=>a.name),datasets:[{data:w.map(v=>parseFloat((v*100).toFixed(1))),backgroundColor:PAL,borderWidth:2,borderColor:getComputedStyle(document.documentElement).getPropertyValue('--bg2').trim()||'#13161D'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed.toFixed(1)}%`}}}}
+  });
+  if(legId)document.getElementById(legId).innerHTML=assets.map((a,i)=>`<span><span class="ldot" style="background:${PAL[i%PAL.length]};"></span>${a.name}: ${(w[i]*100).toFixed(1)}%</span>`).join('');
+}
+
+// ============================================================
+// DASHBOARD
+// ============================================================
+function buildDash(cov,rf){
+  document.getElementById('d-empty').style.display='none';
+  document.getElementById('d-content').style.display='block';
+  const s=pSt(optW,cov);const sh=(s.ret-rf)/s.vol;
+  document.getElementById('d-metrics').innerHTML=`
+    <div class="mcard"><div class="mlabel">Retorno esperado</div><div class="mval c-blue">${(s.ret*100).toFixed(1)}<span style="font-size:14px;">%</span></div><div class="msub">ao ano</div></div>
+    <div class="mcard"><div class="mlabel">Risco (Volatilidade)</div><div class="mval c-amber">${(s.vol*100).toFixed(1)}<span style="font-size:14px;">%</span></div><div class="msub">ao ano</div></div>
+    <div class="mcard"><div class="mlabel">Índice de Sharpe</div><div class="mval c-green">${sh.toFixed(2)}</div><div class="msub">retorno por unidade de risco</div></div>
+    <div class="mcard"><div class="mlabel">Taxa livre de risco</div><div class="mval" style="color:var(--text2);">${(rf*100).toFixed(1)}<span style="font-size:14px;">%</span></div><div class="msub">referência (Selic)</div></div>`;
+  drawPie('pie-opt',optW,'leg-popt');
+  drawPie('pie-mv',mvW,'leg-pmv');
+  const pfs=[{n:'Máx. Sharpe',w:optW,c:PAL[0]},{n:'Mín. Variância',w:mvW,c:PAL[2]},{n:'Pesos Iguais',w:eqW,c:PAL[1]}];
+  let h=`<thead><tr><th>Portfólio</th><th>Retorno</th><th>Risco</th><th>Sharpe</th>${assets.map(a=>`<th>${a.name}</th>`).join('')}</tr></thead><tbody>`;
+  pfs.forEach(p=>{const s=pSt(p.w,cov);const sh=(s.ret-rf)/s.vol;h+=`<tr><td><span class="ldot" style="background:${p.c};"></span>${p.n}</td><td>${(s.ret*100).toFixed(1)}%</td><td>${(s.vol*100).toFixed(1)}%</td><td>${sh.toFixed(2)}</td>${p.w.map(v=>`<td>${(v*100).toFixed(1)}%</td>`).join('')}</tr>`;});
+  document.getElementById('d-sumtbl').innerHTML=h+`</tbody>`;
+}
+
+// ============================================================
+// FRONTIER
+// ============================================================
+function buildFront(cov,rf){
+  document.getElementById('f-empty').style.display='none';
+  document.getElementById('f-content').style.display='block';
+  const os=pSt(optW,cov),ms=pSt(mvW,cov);
+  const maxVol=Math.max(...frontier.map(p=>p.vol),os.vol,...assets.map(a=>a.vol/100))*1.1;
+  const cmlEnd={x:parseFloat((maxVol*100).toFixed(2)),y:parseFloat(((rf+(os.ret-rf)/os.vol*maxVol)*100).toFixed(2))};
+  dChart('ef-chart');
+  charts['ef-chart']=new Chart(document.getElementById('ef-chart').getContext('2d'),{
+    type:'scatter',
+    data:{datasets:[
+      {label:'Fronteira Eficiente',data:frontier.map(p=>({x:parseFloat((p.vol*100).toFixed(2)),y:parseFloat((p.ret*100).toFixed(2))})),borderColor:PAL[0],backgroundColor:'rgba(79,126,255,.06)',showLine:true,tension:.35,pointRadius:1.5,borderWidth:2,fill:false},
+      {label:'CML',data:[{x:0,y:rf*100},{x:cmlEnd.x,y:cmlEnd.y}],borderColor:PAL[1],borderDash:[6,4],showLine:true,pointRadius:0,borderWidth:1.5},
+      {label:'Carteira ótima (Sharpe)',data:[{x:parseFloat((os.vol*100).toFixed(2)),y:parseFloat((os.ret*100).toFixed(2))}],backgroundColor:PAL[0],borderColor:PAL[0],pointRadius:11,pointHoverRadius:14},
+      {label:'Mínima variância',data:[{x:parseFloat((ms.vol*100).toFixed(2)),y:parseFloat((ms.ret*100).toFixed(2))}],backgroundColor:PAL[2],borderColor:PAL[2],pointRadius:10,pointStyle:'rect'},
+      {label:'Ativos individuais',data:assets.map(a=>({x:a.vol,y:a.ret,label:a.name})),backgroundColor:'#8892A8',borderColor:'#8892A8',pointRadius:6,pointStyle:'triangle'},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{if(c.dataset.label==='Ativos individuais')return`${c.raw.label}: Ret ${c.raw.y}%, Vol ${c.raw.x}%`;return`Ret ${c.parsed.y.toFixed(1)}%, Vol ${c.parsed.x.toFixed(1)}%`;}}}},
+      scales:{
+        x:{...baseScales.x,title:{display:true,text:'Risco — Volatilidade (%/ano)',color:tickColor},ticks:{...baseScales.x.ticks,callback:v=>v+'%'}},
+        y:{...baseScales.y,title:{display:true,text:'Retorno esperado (%/ano)',color:tickColor},ticks:{...baseScales.y.ticks,callback:v=>v+'%'}}
+      }
+    }
+  });
+  document.getElementById('ef-leg').innerHTML=[[PAL[0],'Fronteira Eficiente'],[PAL[1],'CML (Linha de Mercado)'],[PAL[0],'Carteira ótima ●'],[PAL[2],'Mínima variância ■'],['#8892A8','Ativos individuais ▲']].map(([c,l])=>`<span><span class="ldot" style="background:${c};"></span>${l}</span>`).join('');
+  dChart('alloc-chart');
+  charts['alloc-chart']=new Chart(document.getElementById('alloc-chart').getContext('2d'),{
+    type:'bar',
+    data:{labels:frontier.map(p=>(p.vol*100).toFixed(1)+'%'),datasets:assets.map((a,i)=>({label:a.name,data:frontier.map(p=>parseFloat((p.w[i]*100).toFixed(1))),backgroundColor:PAL[i%PAL.length],stack:'s'}))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{stacked:true,...baseScales.x,ticks:{...baseScales.x.ticks,autoSkip:true,maxTicksLimit:10}},y:{stacked:true,max:100,...baseScales.y,ticks:{...baseScales.y.ticks,callback:v=>v+'%'}}}}
+  });
+  document.getElementById('alloc-leg').innerHTML=assets.map((a,i)=>`<span><span class="ldot" style="background:${PAL[i%PAL.length]};"></span>${a.name}</span>`).join('');
+}
+
+// ============================================================
+// COMPARISON
+// ============================================================
+function buildCmp(cov,rf){
+  document.getElementById('c-empty').style.display='none';
+  document.getElementById('c-content').style.display='block';
+  const pfs=[{n:'Máx. Sharpe',w:optW,c:PAL[0]},{n:'Mín. Variância',w:mvW,c:PAL[2]},{n:'Pesos Iguais',w:eqW,c:PAL[1]}];
+  const sts=pfs.map(p=>({...p,s:pSt(p.w,cov)}));
+  const shs=sts.map(p=>(p.s.ret-rf)/p.s.vol);
+  dChart('cmp-chart');
+  charts['cmp-chart']=new Chart(document.getElementById('cmp-chart').getContext('2d'),{
+    type:'scatter',
+    data:{datasets:sts.map(p=>({label:p.n,data:[{x:parseFloat((p.s.vol*100).toFixed(2)),y:parseFloat((p.s.ret*100).toFixed(2))}],backgroundColor:p.c,borderColor:p.c,pointRadius:16,pointHoverRadius:19}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:tickColor,font:{size:12}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: Ret ${c.parsed.y.toFixed(1)}%, Vol ${c.parsed.x.toFixed(1)}%`}}},
+      scales:{x:{...baseScales.x,title:{display:true,text:'Risco (%/ano)',color:tickColor},ticks:{...baseScales.x.ticks,callback:v=>v+'%'}},y:{...baseScales.y,title:{display:true,text:'Retorno (%/ano)',color:tickColor},ticks:{...baseScales.y.ticks,callback:v=>v+'%'}}}
+    }
+  });
+  const maxSh=Math.max(...shs),minVol=Math.min(...sts.map(p=>p.s.vol)),maxRet=Math.max(...sts.map(p=>p.s.ret));
+  let h=`<thead><tr><th>Portfólio</th><th>Retorno</th><th>Risco</th><th>Índice de Sharpe</th></tr></thead><tbody>`;
+  sts.forEach((p,i)=>{
+    const wSh=Math.abs(shs[i]-maxSh)<.001,wVol=Math.abs(p.s.vol-minVol)<.0001,wRet=Math.abs(p.s.ret-maxRet)<.0001;
+    h+=`<tr><td><span class="ldot" style="background:${p.c};"></span>${p.n}</td><td class="${wRet?'win':''}">${(p.s.ret*100).toFixed(1)}% ${wRet?'🏆':''}</td><td class="${wVol?'win':''}">${(p.s.vol*100).toFixed(1)}% ${wVol?'🏆':''}</td><td class="${wSh?'win':''}">${shs[i].toFixed(2)} ${wSh?'🏆':''}</td></tr>`;
+  });
+  document.getElementById('cmp-tbl').innerHTML=h+`</tbody>`;
+  dChart('cmp-alloc');
+  charts['cmp-alloc']=new Chart(document.getElementById('cmp-alloc').getContext('2d'),{
+    type:'bar',
+    data:{labels:assets.map(a=>a.name),datasets:pfs.map(p=>({label:p.n,data:p.w.map(v=>parseFloat((v*100).toFixed(1))),backgroundColor:p.c}))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:tickColor,font:{size:12}}}},scales:{x:{...baseScales.x,ticks:{color:tickColor}},y:{...baseScales.y,ticks:{...baseScales.y.ticks,callback:v=>v+'%'}}}}
+  });
+}
+
+// ============================================================
+// HEATMAP
+// ============================================================
+function buildHeat(){
+  document.getElementById('h-empty').style.display='none';
+  document.getElementById('h-content').style.display='block';
+  const n=assets.length;const cs=Math.max(44,Math.min(72,Math.floor(520/n)));
+  let h=`<div style="display:inline-block;"><div style="display:flex;margin-bottom:2px;"><div style="width:${cs}px;"></div>`;
+  assets.forEach(a=>h+=`<div style="width:${cs}px;text-align:center;font-size:11px;color:var(--text2);font-weight:600;padding:3px 2px;">${a.name}</div>`);
+  h+=`</div>`;
+  for(let i=0;i<n;i++){
+    h+=`<div style="display:flex;align-items:center;margin-bottom:2px;"><div style="width:${cs}px;font-size:11px;color:var(--text2);font-weight:600;padding:3px 4px;text-align:right;">${assets[i].name}</div>`;
+    for(let j=0;j<n;j++){
+      const v=corrM[i][j];
+      let r,g,b;
+      if(v>=0){r=Math.round(79+v*(0-79));g=Math.round(126+v*(200-126));b=Math.round(255+v*(150-255));}
+      else{const t=-v;r=Math.round(79+t*(255-79));g=Math.round(126+t*(77-126));b=Math.round(255+t*(106-255));}
+      const bg=`rgb(${r},${g},${b})`;
+      const tc=Math.abs(v)>.45?'#fff':'var(--text)';
+      h+=`<div title="${assets[i].name} × ${assets[j].name}: ${v.toFixed(2)}" style="width:${cs}px;height:${cs}px;line-height:${cs}px;text-align:center;font-size:11px;font-weight:700;background:${bg};color:${tc};border-radius:4px;margin:1px;cursor:default;">${v.toFixed(2)}</div>`;
+    }
+    h+=`</div>`;
+  }
+  document.getElementById('hmap').innerHTML=h+`</div>`;
+  let th=`<thead><tr><th>Par de ativos</th><th>Correlação</th><th>Interpretação</th></tr></thead><tbody>`;
+  for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){
+    const v=corrM[i][j];
+    const interp=v>.7?'Alta positiva (diversificação limitada)':v>.3?'Moderada positiva':v>-.3?'Baixa / praticamente nula':v>-.7?'Moderada negativa (boa diversificação)':'Alta negativa (excelente diversificação)';
+    const color=v>.3?'var(--accent2)':v<-.3?'var(--danger)':'var(--text)';
+    th+=`<tr><td>${assets[i].name} × ${assets[j].name}</td><td style="color:${color};font-weight:500;">${v.toFixed(2)}</td><td style="color:var(--text2);">${interp}</td></tr>`;
+  }
+  document.getElementById('corr-tbl').innerHTML=th+`</tbody>`;
+}
+
+// ============================================================
+// IBOVESPA
+// ============================================================
+function buildIbov(cov,rf){
+  document.getElementById('ib-empty').style.display='none';
+  document.getElementById('ib-content').style.display='block';
+  const ibRet=parseFloat(document.getElementById('ibov-ret').value||14)/100;
+  const ibVol=0.20;const ibSh=(ibRet-rf)/ibVol;
+  const os=pSt(optW,cov);const oSh=(os.ret-rf)/os.vol;
+  const retDiff=(os.ret-ibRet)*100;const volDiff=(os.vol-ibVol)*100;
+  document.getElementById('ib-metrics').innerHTML=`
+    <div class="mcard"><div class="mlabel">Sharpe — Carteira ótima</div><div class="mval c-green">${oSh.toFixed(2)}</div></div>
+    <div class="mcard"><div class="mlabel">Sharpe — Ibovespa</div><div class="mval c-amber">${ibSh.toFixed(2)}</div></div>
+    <div class="mcard"><div class="mlabel">Retorno extra vs Ibov</div><div class="mval ${retDiff>=0?'c-green':'c-red'}">${retDiff>=0?'+':''}${retDiff.toFixed(1)}%</div></div>
+    <div class="mcard"><div class="mlabel">Risco vs Ibov</div><div class="mval ${volDiff<=0?'c-green':'c-amber'}">${volDiff>=0?'+':''}${volDiff.toFixed(1)}%</div></div>`;
+  const pfs=[{n:'Máx. Sharpe',s:os,c:PAL[0]},{n:'Mín. Variância',s:pSt(mvW,cov),c:PAL[2]},{n:'Pesos Iguais',s:pSt(eqW,cov),c:PAL[1]},{n:'Ibovespa',s:{ret:ibRet,vol:ibVol},c:'#FF4D6A'}];
+  dChart('ib-scatter');
+  charts['ib-scatter']=new Chart(document.getElementById('ib-scatter').getContext('2d'),{
+    type:'scatter',
+    data:{datasets:pfs.map(p=>({label:p.n,data:[{x:parseFloat((p.s.vol*100).toFixed(2)),y:parseFloat((p.s.ret*100).toFixed(2))}],backgroundColor:p.c,borderColor:p.c,pointRadius:16,pointHoverRadius:19}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:tickColor,font:{size:12}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: Ret ${c.parsed.y.toFixed(1)}%, Vol ${c.parsed.x.toFixed(1)}%`}}},
+      scales:{x:{...baseScales.x,title:{display:true,text:'Risco (%/ano)',color:tickColor},ticks:{...baseScales.x.ticks,callback:v=>v+'%'}},y:{...baseScales.y,title:{display:true,text:'Retorno (%/ano)',color:tickColor},ticks:{...baseScales.y.ticks,callback:v=>v+'%'}}}
+    }
+  });
+  let th=`<thead><tr><th>Portfólio</th><th>Retorno</th><th>Risco</th><th>Sharpe</th><th>vs Ibovespa (Sharpe)</th></tr></thead><tbody>`;
+  pfs.forEach(p=>{const sh=(p.s.ret-rf)/p.s.vol;const vs=sh-ibSh;th+=`<tr><td><span class="ldot" style="background:${p.c};"></span>${p.n}</td><td>${(p.s.ret*100).toFixed(1)}%</td><td>${(p.s.vol*100).toFixed(1)}%</td><td>${sh.toFixed(2)}</td><td style="color:${vs>=0?'var(--accent2)':'var(--danger)'};">${vs>=0?'+':''}${vs.toFixed(2)}</td></tr>`;});
+  document.getElementById('ib-tbl').innerHTML=th+`</tbody>`;
+}
+
+// ============================================================
+// PROFILE
+// ============================================================
+function selProfile(p,el){
+  document.querySelectorAll('.pcard').forEach(c=>{c.classList.remove('sel');c.setAttribute('aria-pressed','false');});
+  el.classList.add('sel');el.setAttribute('aria-pressed','true');
+  document.getElementById('prof-empty').style.display='none';
+  document.getElementById('prof-result').style.display='block';
+  if(!hasRes){document.getElementById('prof-rec').innerHTML=`<p style="color:var(--text2);font-size:13px;">Calcule o portfólio primeiro para ver a recomendação.</p>`;return;}
+  const cov=buildCov();const rf=parseFloat(document.getElementById('rf').value||0)/100;
+  const conf={
+    con:{w:mvW,nm:'Mínima Variância',col:'var(--accent2)',desc:'Seu perfil <strong>conservador</strong> prioriza a preservação do capital. A carteira de <strong>mínima variância</strong> minimiza o risco total — ideal para quem tem baixa tolerância a perdas e foco no curto a médio prazo.'},
+    mod:{w:optW,nm:'Máximo Sharpe',col:'var(--gold)',desc:'Seu perfil <strong>moderado</strong> busca o melhor equilíbrio entre retorno e risco. A carteira de <strong>máximo Índice de Sharpe</strong> otimiza exatamente essa relação, entregando o maior retorno por unidade de risco.'},
+    arr:{w:frontier[frontier.length-1]?.w||optW,nm:'Fronteira — Máximo Retorno',col:'var(--danger)',desc:'Seu perfil <strong>arrojado</strong> aceita alta volatilidade em busca do maior retorno possível. O portfólio no <strong>topo da fronteira eficiente</strong> maximiza o retorno esperado — adequado para longo prazo.'},
+  };
+  const c=conf[p];const s=pSt(c.w,cov);const sh=(s.ret-rf)/s.vol;
+  document.getElementById('prof-rec').innerHTML=`
+    <div style="font-size:13px;color:var(--text2);line-height:1.7;margin-bottom:1rem;">${c.desc}</div>
+    <div class="g3" style="gap:8px;">
+      <div class="mcard"><div class="mlabel">Retorno esperado</div><div class="mval" style="font-size:18px;color:${c.col};">${(s.ret*100).toFixed(1)}%</div></div>
+      <div class="mcard"><div class="mlabel">Risco</div><div class="mval c-amber" style="font-size:18px;">${(s.vol*100).toFixed(1)}%</div></div>
+      <div class="mcard"><div class="mlabel">Índice de Sharpe</div><div class="mval c-green" style="font-size:18px;">${sh.toFixed(2)}</div></div>
+    </div>`;
+  drawPie('pie-prof',c.w,'leg-prof');
+}
+
+// ============================================================
+// REPORT & EXPORT
+// ============================================================
+function buildReport(){
+  document.getElementById('r-empty').style.display='none';
+  document.getElementById('r-content').style.display='block';
+  updPreview();
+}
+function updPreview(){
+  if(!hasRes)return;
+  const cov=buildCov();const rf=parseFloat(document.getElementById('rf').value||0)/100;
+  const os=pSt(optW,cov);const ms=pSt(mvW,cov);const es=pSt(eqW,cov);
+  document.getElementById('r-preview').innerHTML=`
+    <strong>${document.getElementById('r-title')?.value||'Análise de Portfólio — Teoria Moderna do Portfólio'}</strong><br>
+    <span style="color:var(--text3);">${document.getElementById('r-author')?.value||'Autor'} | ${document.getElementById('r-inst')?.value||'Instituição'} | ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}</span><br><br>
+    <strong>Ativos analisados:</strong> ${assets.map(a=>a.name).join(', ')}<br>
+    <strong>Taxa livre de risco:</strong> ${(rf*100).toFixed(1)}%/ano<br><br>
+    <strong>Carteira ótima (Máx. Sharpe):</strong> Retorno ${(os.ret*100).toFixed(1)}%, Risco ${(os.vol*100).toFixed(1)}%, Sharpe ${((os.ret-rf)/os.vol).toFixed(2)}<br>
+    <strong>Mínima Variância:</strong> Retorno ${(ms.ret*100).toFixed(1)}%, Risco ${(ms.vol*100).toFixed(1)}%, Sharpe ${((ms.ret-rf)/ms.vol).toFixed(2)}<br>
+    <strong>Pesos Iguais:</strong> Retorno ${(es.ret*100).toFixed(1)}%, Risco ${(es.vol*100).toFixed(1)}%, Sharpe ${((es.ret-rf)/es.vol).toFixed(2)}<br><br>
+    <span style="color:var(--text3);font-size:11px;">Clique em "Gerar relatório" para baixar o arquivo HTML completo e imprimir como PDF.</span>`;
+}
+function dl(c,n,m){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c],{type:m}));a.download=n;document.body.appendChild(a);a.click();document.body.removeChild(a);}
+function expCSV(){
+  if(!hasRes){alert('Calcule o portfólio primeiro.');return;}
+  let c='Vol_%,Ret_%,'+assets.map(a=>a.name+'_w%').join(',')+'\n';
+  frontier.forEach(p=>{c+=`${(p.vol*100).toFixed(2)},${(p.ret*100).toFixed(2)},${p.w.map(v=>(v*100).toFixed(2)).join(',')}\n`;});
+  dl(c,'fronteira_eficiente_markowitzlab.csv','text/csv');
+}
+function expJSON(){
+  if(!hasRes){alert('Calcule o portfólio primeiro.');return;}
+  const cov=buildCov();const rf=parseFloat(document.getElementById('rf').value||0)/100;
+  const os=pSt(optW,cov);const ms=pSt(mvW,cov);
+  const data={
+    ferramenta:'MarkowitzLab v2.0',gerado:new Date().toISOString(),
+    parametros:{taxa_rf_pct:parseFloat((rf*100).toFixed(2)),ativos:assets,correlacoes:corrM},
+    carteira_otima:{pesos:Object.fromEntries(assets.map((a,i)=>[a.name,parseFloat((optW[i]*100).toFixed(2)]))),retorno_pct:parseFloat((os.ret*100).toFixed(2)),volatilidade_pct:parseFloat((os.vol*100).toFixed(2)),sharpe:parseFloat(((os.ret-rf)/os.vol).toFixed(3))},
+    minima_variancia:{pesos:Object.fromEntries(assets.map((a,i)=>[a.name,parseFloat((mvW[i]*100).toFixed(2)]))),retorno_pct:parseFloat((ms.ret*100).toFixed(2)),volatilidade_pct:parseFloat((ms.vol*100).toFixed(2))},
+    fronteira_eficiente:frontier.map(p=>({vol_pct:parseFloat((p.vol*100).toFixed(2)),ret_pct:parseFloat((p.ret*100).toFixed(2)),pesos:Object.fromEntries(assets.map((a,i)=>[a.name,parseFloat((p.w[i]*100).toFixed(2))]))}))
+  };
+  dl(JSON.stringify(data,null,2),'portfolio_markowitzlab.json','application/json');
+}
+function genHTML(){
+  if(!hasRes){alert('Calcule o portfólio primeiro.');return;}
+  const cov=buildCov();const rf=parseFloat(document.getElementById('rf').value||0)/100;
+  const os=pSt(optW,cov);const ms=pSt(mvW,cov);const es=pSt(eqW,cov);
+  const author=document.getElementById('r-author').value||'—';
+  const inst=document.getElementById('r-inst').value||'—';
+  const title=document.getElementById('r-title').value||'Análise de Portfólio — Teoria Moderna do Portfólio';
+  const ibRet=parseFloat(document.getElementById('ibov-ret').value||14)/100;const ibSh=(ibRet-rf)/0.20;
+  const n=assets.length;let corrRows='';
+  for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){const v=corrM[i][j];corrRows+=`<tr><td>${assets[i].name} × ${assets[j].name}</td><td style="text-align:center;font-weight:600;color:${v>.3?'#1baf7a':v<-.3?'#e34948':'#333'};">${v.toFixed(2)}</td><td>${v>.7?'Alta positiva':v>.3?'Moderada positiva':v>-.3?'Baixa / nula':v>-.7?'Moderada negativa':'Alta negativa'}</td></tr>`;}
+  const html=`<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>${title} — MarkowitzLab</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',system-ui,sans-serif;color:#1a1a2e;background:#fff;font-size:13px;line-height:1.6;}
+.cover{background:linear-gradient(135deg,#0D0F14 0%,#141830 100%);color:#fff;padding:3rem 2.5rem;page-break-after:avoid;}
+.cover-tag{font-size:10px;letter-spacing:.15em;text-transform:uppercase;opacity:.45;margin-bottom:.5rem;}
+.cover h1{font-size:24px;font-weight:700;letter-spacing:-.5px;margin-bottom:.4rem;}
+.cover-sub{font-size:13px;opacity:.6;margin-bottom:1.5rem;}
+.cover-meta{font-size:12px;opacity:.5;}
+.cover-badge{display:inline-block;background:rgba(79,126,255,.3);color:#7AABFF;font-size:10px;font-weight:700;padding:3px 10px;border-radius:20px;letter-spacing:.08em;margin-bottom:1rem;}
+.wrap{max-width:880px;margin:0 auto;padding:2rem 2.5rem;}
+h2{font-size:15px;font-weight:700;margin:2rem 0 .75rem;padding-bottom:.4rem;border-bottom:2px solid #4F7EFF;color:#0D0F14;letter-spacing:-.2px;}
+.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:.6rem;margin:.75rem 0;}
+.mc{background:#f4f6fc;border:1px solid #e0e4f0;border-radius:8px;padding:.7rem .9rem;}
+.ml{font-size:10px;color:#666;margin-bottom:3px;font-weight:500;}
+.mv{font-size:19px;font-weight:700;color:#0D0F14;}
+.mv.blue{color:#2a78d6;}.mv.green{color:#1baf7a;}.mv.amber{color:#eda100;}.mv.red{color:#e34948;}
+table{width:100%;border-collapse:collapse;font-size:12px;margin:.5rem 0;}
+th{background:#f0f2fa;padding:7px 10px;text-align:left;font-weight:600;color:#555;font-size:10px;text-transform:uppercase;letter-spacing:.06em;}
+td{padding:7px 10px;border-bottom:1px solid #e8eaf0;}
+tr:last-child td{border-bottom:none;}
+tr:hover td{background:#f8f9fd;}
+.win{color:#1baf7a;font-weight:700;}
+.note{font-size:11px;color:#888;font-style:italic;line-height:1.6;margin-top:1rem;}
+.disclaimer{background:#fff8ee;border:1px solid #fbd96a;border-radius:6px;padding:.75rem 1rem;font-size:11px;color:#7a5c00;margin-top:2rem;line-height:1.6;}
+@media print{
+  body{font-size:12px;}
+  .cover{print-color-adjust:exact;-webkit-print-color-adjust:exact;}
+  .g4{grid-template-columns:repeat(4,1fr);}
+  h2{page-break-after:avoid;}
+  table{page-break-inside:avoid;}
+  button{display:none!important;}
+}
+</style>
+</head>
+<body>
+<div class="cover">
+  <div class="cover-tag">MarkowitzLab — Relatório de Análise</div>
+  <div class="cover-badge">FERRAMENTA EDUCACIONAL</div>
+  <h1>${title}</h1>
+  <div class="cover-sub">Otimização de portfólios via Teoria Moderna do Portfólio (Markowitz, 1952)</div>
+  <div class="cover-meta">${author} &nbsp;|&nbsp; ${inst} &nbsp;|&nbsp; ${new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})}</div>
+</div>
+<div class="wrap">
+<h2>1. Ativos analisados</h2>
+<table><tr><th>Ticker</th><th>Retorno esperado (%/ano)</th><th>Volatilidade (%/ano)</th></tr>${assets.map(a=>`<tr><td>${a.name}</td><td>${a.ret.toFixed(1)}%</td><td>${a.vol.toFixed(1)}%</td></tr>`).join('')}</table>
+<p style="font-size:11px;color:#666;margin-top:.4rem;">Taxa livre de risco utilizada: <strong>${(rf*100).toFixed(1)}%</strong> ao ano. Retorno Ibovespa de referência: <strong>${(ibRet*100).toFixed(1)}%</strong> ao ano.</p>
+
+<h2>2. Carteira de Máximo Índice de Sharpe</h2>
+<div class="g4">
+  <div class="mc"><div class="ml">Retorno esperado</div><div class="mv blue">${(os.ret*100).toFixed(1)}%</div></div>
+  <div class="mc"><div class="ml">Risco (Volatilidade)</div><div class="mv amber">${(os.vol*100).toFixed(1)}%</div></div>
+  <div class="mc"><div class="ml">Índice de Sharpe</div><div class="mv green">${((os.ret-rf)/os.vol).toFixed(2)}</div></div>
+  <div class="mc"><div class="ml">Retorno líquido</div><div class="mv">${((os.ret-rf)*100).toFixed(1)}%</div></div>
+</div>
+<table><tr><th>Ativo</th><th>Peso na carteira</th></tr>${assets.map((a,i)=>`<tr><td>${a.name}</td><td>${(optW[i]*100).toFixed(1)}%</td></tr>`).join('')}</table>
+
+<h2>3. Portfólio de Mínima Variância</h2>
+<div class="g4">
+  <div class="mc"><div class="ml">Retorno esperado</div><div class="mv blue">${(ms.ret*100).toFixed(1)}%</div></div>
+  <div class="mc"><div class="ml">Risco (Volatilidade)</div><div class="mv green">${(ms.vol*100).toFixed(1)}%</div></div>
+  <div class="mc"><div class="ml">Índice de Sharpe</div><div class="mv">${((ms.ret-rf)/ms.vol).toFixed(2)}</div></div>
+</div>
+<table><tr><th>Ativo</th><th>Peso na carteira</th></tr>${assets.map((a,i)=>`<tr><td>${a.name}</td><td>${(mvW[i]*100).toFixed(1)}%</td></tr>`).join('')}</table>
+
+<h2>4. Comparação entre portfólios</h2>
+<table><tr><th>Portfólio</th><th>Retorno</th><th>Risco</th><th>Índice de Sharpe</th>${assets.map(a=>`<th>${a.name}</th>`).join('')}</tr>
+${[{n:'Máx. Sharpe',w:optW,s:os},{n:'Mín. Variância',w:mvW,s:ms},{n:'Pesos Iguais',w:eqW,s:es}].map(p=>{const sh=(p.s.ret-rf)/p.s.vol;return`<tr><td>${p.n}</td><td>${(p.s.ret*100).toFixed(1)}%</td><td>${(p.s.vol*100).toFixed(1)}%</td><td>${sh.toFixed(2)}</td>${p.w.map(v=>`<td>${(v*100).toFixed(1)}%</td>`).join('')}</tr>`;}).join('')}</table>
+
+<h2>5. Comparação com Ibovespa</h2>
+<table><tr><th>Portfólio</th><th>Retorno</th><th>Risco</th><th>Sharpe</th><th>vs Ibovespa (Sharpe)</th></tr>
+${[{n:'Máx. Sharpe',s:os},{n:'Mín. Variância',s:ms},{n:'Pesos Iguais',s:es},{n:'Ibovespa (referência)',s:{ret:ibRet,vol:0.20}}].map(p=>{const sh=(p.s.ret-rf)/p.s.vol;const vs=sh-ibSh;return`<tr><td>${p.n}</td><td>${(p.s.ret*100).toFixed(1)}%</td><td>${(p.s.vol*100).toFixed(1)}%</td><td>${sh.toFixed(2)}</td><td style="color:${p.n.includes('Ibov')?'#333':vs>=0?'#1baf7a':'#e34948'};font-weight:${p.n.includes('Ibov')?'400':'600'};">${p.n.includes('Ibov')?'—':vs>=0?'+'+vs.toFixed(2):vs.toFixed(2)}</td></tr>`;}).join('')}</table>
+
+<h2>6. Matriz de correlações</h2>
+<table><tr><th>Par de ativos</th><th style="text-align:center;">Correlação</th><th>Interpretação</th></tr>${corrRows}</table>
+
+<h2>7. Metodologia</h2>
+<p style="font-size:12px;line-height:1.8;color:#333;">A otimização foi realizada com base na Teoria Moderna do Portfólio de Harry Markowitz (1952), utilizando simulação de Monte Carlo com mais de 10.000 portfólios aleatórios e refinamento iterativo por gradiente estocástico. A fronteira eficiente representa o conjunto de portfólios com mínima variância para cada nível de retorno esperado. O Índice de Sharpe (Sharpe, 1966) mede o excesso de retorno por unidade de risco (volatilidade). A taxa livre de risco utilizada foi de ${(rf*100).toFixed(1)}% ao ano, aproximando a taxa Selic de referência.</p>
+
+<h2>8. Referências</h2>
+<p style="font-size:12px;line-height:2;color:#333;">
+MARKOWITZ, H. Portfolio Selection. <em>The Journal of Finance</em>, v. 7, n. 1, p. 77–91, 1952.<br>
+SHARPE, W. F. Mutual Fund Performance. <em>The Journal of Business</em>, v. 39, n. 1, p. 119–138, 1966.<br>
+ELTON, E. J. et al. <em>Modern Portfolio Theory and Investment Analysis</em>. 9. ed. Wiley, 2014.
+</p>
+
+<div class="disclaimer">
+  ⚠ <strong>Aviso importante:</strong> Este relatório foi gerado pela ferramenta educacional MarkowitzLab e tem fins exclusivamente acadêmicos. Os resultados são baseados em estimativas de retorno e risco fornecidas pelo usuário ou obtidas de fontes públicas. Dados históricos não garantem resultados futuros. Este documento não constitui, em hipótese alguma, recomendação de investimento. Antes de tomar decisões financeiras, consulte um profissional habilitado e certificado pela CVM.
+</div>
+</div>
+<script>window.onload=()=>setTimeout(()=>window.print(),700);<\/script>
+</body></html>`;
+  dl(html,'relatorio_markowitzlab.html','text/html');
+}
+
+// ============================================================
+// INIT
+// ============================================================
+renderA();
+</script>
+</body>
+</html>
