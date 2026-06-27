@@ -1,0 +1,937 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="MarkowitzLab — Otimização de portfólios via Teoria Moderna do Portfólio. Fronteira eficiente, Sharpe, heatmap, Ibovespa e relatório PDF.">
+<title>MarkowitzLab — Teoria Moderna do Portfólio</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect width='100' height='100' rx='18' fill='%230D0F14'/><polyline points='15,70 35,40 55,55 80,20' fill='none' stroke='%234F7EFF' stroke-width='8' stroke-linecap='round' stroke-linejoin='round'/><circle cx='80' cy='20' r='7' fill='%2300C896'/></svg>">
+<style>
+:root{
+  --bg:#0D0F14;--bg2:#13161D;--bg3:#1A1E28;--bg4:#222737;
+  --bd:#2A3045;--bd2:#1E2438;
+  --tx:#E8ECF5;--tx2:#8892A8;--tx3:#4E5870;
+  --ac:#4F7EFF;--gr:#00C896;--am:#FF8C42;--rd:#FF4D6A;--pu:#A78BFA;--gd:#F5C842;
+  --r:10px;--rs:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:14px;line-height:1.5;min-height:100vh;}
+
+/* ── LAYOUT ── */
+.wrap{display:flex;flex-direction:column;min-height:100vh;}
+.topbar{background:var(--bg2);border-bottom:1px solid var(--bd);padding:.7rem 1.1rem;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:50;}
+.logo{font-size:16px;font-weight:700;letter-spacing:-.4px;color:var(--tx);}
+.logo em{color:var(--ac);font-style:normal;}
+.logo-tag{font-size:10px;color:var(--tx3);margin-top:1px;}
+.nav{background:var(--bg2);border-bottom:1px solid var(--bd);display:flex;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.nav::-webkit-scrollbar{display:none;}
+.nb{background:none;border:none;border-bottom:2px solid transparent;padding:.65rem .95rem;font-size:12px;cursor:pointer;color:var(--tx2);font-weight:500;white-space:nowrap;font-family:inherit;transition:color .15s;margin-bottom:-1px;-webkit-tap-highlight-color:transparent;}
+.nb:hover{color:var(--tx);}
+.nb.on{color:var(--ac);border-bottom-color:var(--ac);}
+.body{flex:1;padding:1.1rem;max-width:920px;width:100%;margin:0 auto;}
+.pg{display:none;}
+.pg.on{display:block;animation:fi .18s ease;}
+@keyframes fi{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── TYPE ── */
+.ptit{font-size:19px;font-weight:700;letter-spacing:-.4px;margin-bottom:.2rem;}
+.psub{font-size:12px;color:var(--tx2);margin-bottom:1rem;line-height:1.55;}
+.slbl{font-size:10px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;color:var(--tx3);margin:.85rem 0 .45rem;}
+.slbl:first-child{margin-top:0;}
+
+/* ── CARD ── */
+.card{background:var(--bg2);border:1px solid var(--bd);border-radius:var(--r);padding:1rem 1.15rem;margin-bottom:.7rem;}
+.ctit{font-size:13px;font-weight:600;margin-bottom:.6rem;}
+
+/* ── METRIC ── */
+.mc{background:var(--bg3);border:1px solid var(--bd2);border-radius:var(--rs);padding:.7rem .9rem;}
+.ml{font-size:10px;color:var(--tx2);margin-bottom:3px;font-weight:500;}
+.mv{font-size:21px;font-weight:700;line-height:1.1;}
+.ms{font-size:10px;color:var(--tx3);margin-top:2px;}
+.cb{color:var(--ac);}.cg{color:var(--gr);}.ca{color:var(--am);}.cr{color:var(--rd);}
+
+/* ── GRID ── */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:.6rem;}
+.g4{display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:.6rem;}
+
+/* ── FORM ── */
+input,select,textarea{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--rs);color:var(--tx);font-size:13px;padding:7px 10px;width:100%;font-family:inherit;outline:none;-webkit-appearance:none;transition:border-color .15s;}
+input:focus,select:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(79,126,255,.12);}
+input[type=number]{-moz-appearance:textfield;}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='7'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%238892A8' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:26px;}
+label.lbl{font-size:11px;color:var(--tx2);display:block;margin-bottom:3px;}
+.hint{font-size:10px;color:var(--tx3);margin-top:3px;line-height:1.5;}
+
+/* ── BUTTON ── */
+.btn{background:var(--bg3);border:1px solid var(--bd);border-radius:var(--rs);color:var(--tx);font-size:13px;padding:8px 15px;cursor:pointer;font-family:inherit;font-weight:500;white-space:nowrap;transition:all .15s;display:inline-flex;align-items:center;gap:5px;-webkit-tap-highlight-color:transparent;}
+.btn:hover{background:var(--bg4);border-color:var(--ac);}
+.btn:active{transform:scale(.97);}
+.btn-p{background:var(--ac);border-color:var(--ac);color:#fff;}
+.btn-p:hover{background:#3a6aff;border-color:#3a6aff;}
+.btn-sm{padding:5px 11px;font-size:12px;}
+.btn-xs{padding:3px 9px;font-size:11px;}
+.bdel{background:none;border:none;cursor:pointer;color:var(--tx3);font-size:20px;padding:2px 5px;line-height:1;-webkit-tap-highlight-color:transparent;transition:color .15s;}
+.bdel:hover{color:var(--rd);}
+.brow{display:flex;gap:8px;flex-wrap:wrap;align-items:center;}
+
+/* ── BADGE ── */
+.badge{display:inline-block;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600;}
+.bok{background:rgba(0,200,150,.15);color:var(--gr);}
+.berr{background:rgba(255,77,106,.15);color:var(--rd);}
+.binf{background:rgba(79,126,255,.15);color:var(--ac);}
+.bwrn{background:rgba(255,140,66,.15);color:var(--am);}
+
+/* ── TABS ── */
+.tabs{display:flex;border-bottom:1px solid var(--bd);margin-bottom:.75rem;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.tabs::-webkit-scrollbar{display:none;}
+.tab{background:none;border:none;border-bottom:2px solid transparent;padding:7px 14px;font-size:12px;cursor:pointer;color:var(--tx2);font-weight:500;margin-bottom:-1px;font-family:inherit;white-space:nowrap;-webkit-tap-highlight-color:transparent;transition:color .15s;}
+.tab:hover{color:var(--tx);}
+.tab.on{color:var(--ac);border-bottom-color:var(--ac);}
+.tp{display:none;}.tp.on{display:block;}
+
+/* ── TABLE ── */
+.tbl{width:100%;border-collapse:collapse;font-size:12px;}
+.tbl th{padding:7px 10px;text-align:left;font-size:10px;font-weight:600;color:var(--tx2);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--bd);}
+.tbl td{padding:7px 10px;border-bottom:1px solid rgba(42,48,69,.4);}
+.tbl tr:last-child td{border-bottom:none;}
+.tbl tr:hover td{background:rgba(255,255,255,.02);}
+.win{color:var(--gr);font-weight:600;}
+
+/* ── ASSET ROW ── */
+.arow{display:grid;grid-template-columns:95px 1fr 1fr 30px;gap:6px;align-items:center;margin-bottom:6px;}
+
+/* ── CORR ── */
+.cmat{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+.cmat table{border-collapse:collapse;font-size:12px;white-space:nowrap;}
+.cmat th,.cmat td{padding:3px 4px;text-align:center;}
+
+/* ── CHART ── */
+.ch{position:relative;width:100%;height:290px;}
+.ch-lg{position:relative;width:100%;height:350px;}
+.ch-pie{position:relative;width:100%;height:230px;}
+
+/* ── LEGEND ── */
+.leg{display:flex;flex-wrap:wrap;gap:10px;font-size:11px;color:var(--tx2);margin-top:.6rem;}
+.ld{width:10px;height:10px;border-radius:2px;display:inline-block;margin-right:3px;vertical-align:middle;}
+
+/* ── PROFILE ── */
+.pcard{border:1px solid var(--bd);border-radius:var(--r);padding:.9rem 1rem;cursor:pointer;transition:border-color .15s,background .15s;margin-bottom:.6rem;-webkit-tap-highlight-color:transparent;}
+.pcard:hover{border-color:var(--ac);}
+.pcard.sel{border-color:var(--ac);background:rgba(79,126,255,.07);}
+
+/* ── DROP ── */
+.drop{border:2px dashed var(--bd);border-radius:var(--r);padding:1.5rem;text-align:center;color:var(--tx2);cursor:pointer;transition:all .15s;-webkit-tap-highlight-color:transparent;}
+.drop:hover,.drop.dg{border-color:var(--ac);background:rgba(79,126,255,.05);color:var(--tx);}
+
+/* ── MISC ── */
+hr{border:none;border-top:1px solid var(--bd);margin:.9rem 0;}
+.err{color:var(--rd);font-size:12px;min-height:16px;}
+.disc{background:rgba(255,140,66,.07);border:1px solid rgba(255,140,66,.2);border-radius:var(--rs);padding:.7rem 1rem;font-size:11px;color:var(--tx2);line-height:1.6;margin-bottom:.75rem;}
+.empty{text-align:center;padding:2.5rem 1rem;color:var(--tx2);}
+.ei{font-size:36px;margin-bottom:.6rem;}
+::-webkit-scrollbar{width:4px;height:4px;}
+::-webkit-scrollbar-track{background:var(--bg2);}
+::-webkit-scrollbar-thumb{background:var(--bd);border-radius:10px;}
+
+/* ── RESPONSIVE ── */
+@media(max-width:520px){
+  .g4{grid-template-columns:1fr 1fr;}
+  .g3{grid-template-columns:1fr 1fr;}
+  .g2{grid-template-columns:1fr;}
+  .arow{grid-template-columns:80px 1fr 1fr 26px;}
+  .ch-lg,.ch{height:230px;}
+  .ch-pie{height:190px;}
+  .ptit{font-size:16px;}
+}
+@media(max-width:360px){
+  .g3,.g4{grid-template-columns:1fr;}
+  .mv{font-size:18px;}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<div class="topbar">
+  <div><div class="logo">Markowitz<em>Lab</em></div><div class="logo-tag">Teoria Moderna do Portfólio</div></div>
+  <div style="font-size:10px;color:var(--tx3);text-align:right;">v2.0 · Educacional</div>
+</div>
+
+<div class="nav" id="nav">
+  <button class="nb on" onclick="go(0)">⬆ Dados</button>
+  <button class="nb" onclick="go(1)">▦ Dashboard</button>
+  <button class="nb" onclick="go(2)">∿ Fronteira</button>
+  <button class="nb" onclick="go(3)">⇄ Comparação</button>
+  <button class="nb" onclick="go(4)">⊞ Heatmap</button>
+  <button class="nb" onclick="go(5)">🏦 Ibovespa</button>
+  <button class="nb" onclick="go(6)">👤 Perfil</button>
+  <button class="nb" onclick="go(7)">📄 Relatório</button>
+</div>
+
+<div class="body">
+
+<!-- ══════════════════════════════════════════
+     PG 0 — DADOS
+══════════════════════════════════════════ -->
+<div class="pg on" id="pg0">
+  <div class="ptit">Dados & Importação</div>
+  <div class="psub">Configure os ativos manualmente, importe cotações históricas do Yahoo Finance ou envie um arquivo CSV.</div>
+  <div class="disc">⚠ <strong>Aviso educacional:</strong> Esta ferramenta é exclusivamente acadêmica. Não constitui recomendação de investimento. Dados históricos não garantem resultados futuros.</div>
+
+  <div class="tabs">
+    <button class="tab on" onclick="stab(this,'tp0')">Manual</button>
+    <button class="tab" onclick="stab(this,'tp1')">Yahoo Finance</button>
+    <button class="tab" onclick="stab(this,'tp2')">CSV / Excel</button>
+  </div>
+
+  <!-- MANUAL -->
+  <div class="tp on" id="tp0">
+    <div class="card">
+      <div class="slbl">Ativos do portfólio</div>
+      <div class="arow" style="margin-bottom:4px;">
+        <span style="font-size:10px;color:var(--tx3);">Ticker</span>
+        <span style="font-size:10px;color:var(--tx3);">Retorno %/ano</span>
+        <span style="font-size:10px;color:var(--tx3);">Vol. %/ano</span>
+        <span></span>
+      </div>
+      <div id="ar"></div>
+      <button class="btn btn-xs" onclick="addA()" style="margin-top:.4rem;">+ Adicionar ativo</button>
+      <hr>
+      <div class="slbl">Parâmetros globais</div>
+      <div class="g2" style="gap:10px;">
+        <div>
+          <label class="lbl" for="rf">Taxa livre de risco (%/ano)</label>
+          <input type="number" id="rf" value="10.5" step="0.1" min="0" max="100">
+          <div class="hint">Selic atual ≈ 10,5% a.a.</div>
+        </div>
+        <div>
+          <label class="lbl" for="ibr">Retorno Ibovespa (%/ano)</label>
+          <input type="number" id="ibr" value="14.0" step="0.1">
+          <div class="hint">Histórico ≈ 13–15% a.a.</div>
+        </div>
+      </div>
+    </div>
+    <div class="card">
+      <div class="slbl">Matriz de correlação</div>
+      <div class="cmat" id="cm"></div>
+      <div class="hint" style="margin-top:.5rem;">Preencha os valores acima da diagonal (−1 a 1). A matriz é simétrica automaticamente.</div>
+    </div>
+    <div class="brow" style="margin-top:.75rem;">
+      <button class="btn btn-p" onclick="runAll()">⚡ Calcular portfólio</button>
+      <span class="err" id="err"></span>
+    </div>
+    <div id="cst" style="font-size:12px;color:var(--tx2);margin-top:.5rem;min-height:18px;"></div>
+  </div>
+
+  <!-- YAHOO -->
+  <div class="tp" id="tp1">
+    <div class="card">
+      <div class="slbl">Importar via Yahoo Finance</div>
+      <div style="font-size:12px;color:var(--tx2);margin-bottom:.75rem;line-height:1.75;">
+        🇧🇷 <strong>B3:</strong> adicione <code style="background:var(--bg4);padding:1px 5px;border-radius:3px;font-size:11px;">.SA</code> (ex: PETR4.SA, VALE3.SA)<br>
+        🇺🇸 <strong>EUA:</strong> sem sufixo (ex: AAPL, MSFT, TSLA)
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:.65rem;">
+        <input type="text" id="ytk" placeholder="PETR4.SA, VALE3.SA, ITUB4.SA, WEGE3.SA" style="flex:1;min-width:180px;">
+        <select id="yper" style="width:115px;">
+          <option value="1y">1 ano</option>
+          <option value="2y" selected>2 anos</option>
+          <option value="3y">3 anos</option>
+          <option value="5y">5 anos</option>
+        </select>
+      </div>
+      <button class="btn btn-p" onclick="impY()">⬇ Importar dados históricos</button>
+      <div id="yst" style="margin-top:.6rem;font-size:12px;min-height:18px;"></div>
+      <div class="hint" style="margin-top:.6rem;">Dados obtidos via proxy público (allorigins.win → Yahoo Finance). Disponibilidade pode variar conforme a conexão.</div>
+    </div>
+  </div>
+
+  <!-- CSV -->
+  <div class="tp" id="tp2">
+    <div class="card">
+      <div class="slbl">Importar arquivo CSV</div>
+      <div class="drop" id="dz" onclick="document.getElementById('xf').click()" ondragover="ev.preventDefault();this.classList.add('dg')" ondragleave="this.classList.remove('dg')" ondrop="doDrop(event)">
+        <div style="font-size:28px;margin-bottom:.4rem;">📄</div>
+        <div style="font-size:13px;font-weight:600;margin-bottom:3px;">Toque para selecionar arquivo</div>
+        <div style="font-size:11px;">.csv separado por vírgula ou ponto-e-vírgula</div>
+      </div>
+      <input type="file" id="xf" accept=".csv,.txt" style="display:none;" onchange="impF(event)">
+      <div style="margin-top:.75rem;background:var(--bg3);border-radius:var(--rs);padding:.8rem;font-size:12px;color:var(--tx2);line-height:1.9;">
+        <strong>Formato esperado:</strong><br>
+        Coluna A: Ticker &nbsp;|&nbsp; B: Retorno % ao ano &nbsp;|&nbsp; C: Volatilidade % ao ano<br>
+        <span style="color:var(--tx3);">Exemplo: PETR4,18.5,32.0</span>
+      </div>
+      <div id="xst" style="margin-top:.5rem;font-size:12px;min-height:18px;"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PG 1 — DASHBOARD
+══════════════════════════════════════════ -->
+<div class="pg" id="pg1">
+  <div class="ptit">Dashboard</div>
+  <div class="psub">Visão geral dos portfólios otimizados.</div>
+  <div class="empty" id="d1e"><div class="ei">⚡</div><div style="font-size:14px;font-weight:600;margin-bottom:.5rem;">Nenhum cálculo realizado</div><button class="btn btn-p" onclick="go(0)">Ir para Dados</button></div>
+  <div id="d1c" style="display:none;">
+    <div class="slbl">Carteira ótima — Máximo Índice de Sharpe</div>
+    <div class="g4" id="d1m" style="margin-bottom:.8rem;"></div>
+    <div class="card"><div class="ctit">Alocação — Máx. Sharpe</div><div class="ch-pie"><canvas id="pie1"></canvas></div><div class="leg" id="l1"></div></div>
+    <div class="card" style="margin-top:.65rem;"><div class="ctit">Alocação — Mín. Variância</div><div class="ch-pie"><canvas id="pie2"></canvas></div><div class="leg" id="l2"></div></div>
+    <div class="card" style="margin-top:.65rem;"><div class="ctit">Resumo comparativo</div><div style="overflow-x:auto;"><table class="tbl" id="d1t"></table></div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PG 2 — FRONTEIRA
+══════════════════════════════════════════ -->
+<div class="pg" id="pg2">
+  <div class="ptit">Fronteira Eficiente</div>
+  <div class="psub">Curva de Markowitz com Linha de Mercado de Capitais (CML). Cada ponto representa o portfólio de menor risco para um dado nível de retorno.</div>
+  <div class="empty" id="d2e"><div class="ei">∿</div><button class="btn btn-p" onclick="go(0)">Calcular portfólio</button></div>
+  <div id="d2c" style="display:none;">
+    <div class="card"><div class="ch-lg"><canvas id="efc"></canvas></div><div class="leg" id="efl"></div></div>
+    <div class="card" style="margin-top:.65rem;"><div class="ctit">Composição ao longo da fronteira</div><div class="ch"><canvas id="alc"></canvas></div><div class="leg" id="all"></div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PG 3 — COMPARAÇÃO
+══════════════════════════════════════════ -->
+<div class="pg" id="pg3">
+  <div class="ptit">Comparação de Portfólios</div>
+  <div class="psub">Máximo Sharpe × Mínima Variância × Pesos Iguais — métricas, posicionamento e alocações.</div>
+  <div class="empty" id="d3e"><button class="btn btn-p" onclick="go(0)">Calcular portfólio</button></div>
+  <div id="d3c" style="display:none;">
+    <div class="card"><div class="ch"><canvas id="cmc"></canvas></div></div>
+    <div class="card" style="margin-top:.65rem;"><div style="overflow-x:auto;"><table class="tbl" id="cmt"></table></div></div>
+    <div class="card" style="margin-top:.65rem;"><div class="ctit">Alocações comparadas por ativo</div><div class="ch"><canvas id="cac"></canvas></div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PG 4 — HEATMAP
+══════════════════════════════════════════ -->
+<div class="pg" id="pg4">
+  <div class="ptit">Heatmap de Correlação</div>
+  <div class="psub">Azul = correlação positiva · Vermelho = negativa · Menor correlação = maior benefício de diversificação.</div>
+  <div class="empty" id="d4e"><button class="btn btn-p" onclick="go(0)">Calcular portfólio</button></div>
+  <div id="d4c" style="display:none;">
+    <div class="card">
+      <div id="hm" style="overflow-x:auto;-webkit-overflow-scrolling:touch;"></div>
+      <div style="display:flex;align-items:center;gap:8px;font-size:10px;color:var(--tx3);margin-top:.75rem;">
+        <div style="background:linear-gradient(to right,#FF4D6A,#2A3045,#4F7EFF);width:100px;height:7px;border-radius:4px;flex-shrink:0;"></div>
+        <span>−1 (negativa)</span><span style="flex:1"></span><span>+1 (positiva)</span>
+      </div>
+    </div>
+    <div class="card" style="margin-top:.65rem;"><div class="ctit">Correlações detalhadas</div><div style="overflow-x:auto;"><table class="tbl" id="hmt"></table></div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PG 5 — IBOVESPA
+══════════════════════════════════════════ -->
+<div class="pg" id="pg5">
+  <div class="ptit">Comparação com Ibovespa</div>
+  <div class="psub">Performance e métricas dos portfólios otimizados versus o índice de referência da B3.</div>
+  <div class="empty" id="d5e"><button class="btn btn-p" onclick="go(0)">Calcular portfólio</button></div>
+  <div id="d5c" style="display:none;">
+    <div class="g4" id="d5m" style="margin-bottom:.8rem;"></div>
+    <div class="card"><div class="ch"><canvas id="ibc"></canvas></div><div class="leg" id="ibl"></div></div>
+    <div class="card" style="margin-top:.65rem;"><div style="overflow-x:auto;"><table class="tbl" id="ibt"></table></div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PG 6 — PERFIL
+══════════════════════════════════════════ -->
+<div class="pg" id="pg6">
+  <div class="ptit">Perfil do Investidor</div>
+  <div class="psub">Selecione seu perfil e veja qual portfólio se adequa melhor aos seus objetivos e tolerância ao risco.</div>
+  <div class="pcard" id="pc0" onclick="selP('con',this)">
+    <div style="font-size:10px;font-weight:700;color:var(--gr);margin-bottom:.3rem;letter-spacing:.05em;">🛡 CONSERVADOR</div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:.3rem;">Preservação de capital</div>
+    <div style="font-size:12px;color:var(--tx2);line-height:1.5;">Prioriza segurança. Aceita retornos menores em troca de menor volatilidade. Horizonte curto a médio prazo.</div>
+  </div>
+  <div class="pcard" id="pc1" onclick="selP('mod',this)">
+    <div style="font-size:10px;font-weight:700;color:var(--gd);margin-bottom:.3rem;letter-spacing:.05em;">⚖ MODERADO</div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:.3rem;">Equilíbrio risco-retorno</div>
+    <div style="font-size:12px;color:var(--tx2);line-height:1.5;">Busca crescimento consistente com risco controlado. Combina segurança e oportunidade. Médio prazo.</div>
+  </div>
+  <div class="pcard" id="pc2" onclick="selP('arr',this)">
+    <div style="font-size:10px;font-weight:700;color:var(--rd);margin-bottom:.3rem;letter-spacing:.05em;">🚀 ARROJADO</div>
+    <div style="font-size:13px;font-weight:600;margin-bottom:.3rem;">Maximização de retorno</div>
+    <div style="font-size:12px;color:var(--tx2);line-height:1.5;">Aceita alta volatilidade em busca do maior retorno possível. Horizonte longo prazo.</div>
+  </div>
+  <div id="pe" style="text-align:center;padding:1rem;color:var(--tx3);font-size:12px;">Selecione um perfil acima para ver a recomendação.</div>
+  <div id="pc" style="display:none;">
+    <div class="card"><div id="pr"></div></div>
+    <div class="card" style="margin-top:.65rem;"><div class="ctit">Alocação recomendada</div><div class="ch-pie"><canvas id="pie3"></canvas></div><div class="leg" id="l3"></div></div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════
+     PG 7 — RELATÓRIO
+══════════════════════════════════════════ -->
+<div class="pg" id="pg7">
+  <div class="ptit">Relatório & Exportação</div>
+  <div class="psub">Gere o relatório completo para o TCC ou exporte os dados em CSV e JSON.</div>
+  <div class="empty" id="d7e"><div class="ei">📄</div><div style="font-size:14px;font-weight:600;margin-bottom:.5rem;">Calcule o portfólio antes de exportar</div><button class="btn btn-p" onclick="go(0)">Ir para Dados</button></div>
+  <div id="d7c" style="display:none;">
+    <div class="card">
+      <div class="slbl">Personalizar relatório</div>
+      <div class="g2" style="gap:10px;margin-bottom:.65rem;">
+        <div><label class="lbl" for="rau">Nome do autor</label><input type="text" id="rau" placeholder="Seu nome completo"></div>
+        <div><label class="lbl" for="rin">Instituição</label><input type="text" id="rin" placeholder="Universidade / Faculdade"></div>
+      </div>
+      <div style="margin-bottom:.75rem;"><label class="lbl" for="rti">Título do trabalho</label><input type="text" id="rti" placeholder="Análise de Portfólio via Teoria Moderna do Portfólio"></div>
+      <div class="brow">
+        <button class="btn btn-p" onclick="genR()">📄 Baixar relatório HTML</button>
+        <button class="btn btn-sm" onclick="exCSV()">📊 CSV</button>
+        <button class="btn btn-sm" onclick="exJSON()">⚙ JSON</button>
+      </div>
+      <div class="hint" style="margin-top:.65rem;">Abra o arquivo HTML no navegador e use <strong>Compartilhar → Imprimir → Salvar como PDF</strong> para gerar o PDF final.</div>
+    </div>
+    <div class="card" style="margin-top:.65rem;">
+      <div class="ctit">Pré-visualização</div>
+      <div id="rpv" style="font-size:12px;color:var(--tx2);line-height:1.85;background:var(--bg3);border-radius:var(--rs);padding:.85rem;"></div>
+    </div>
+  </div>
+</div>
+
+</div><!-- /body -->
+</div><!-- /wrap -->
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+'use strict';
+// ════════════════════════════════════════════
+// STATE
+// ════════════════════════════════════════════
+const PAL=['#4F7EFF','#00C896','#FF8C42','#A78BFA','#F5C842','#FF4D6A','#5DCAA5','#FF8CE8'];
+const GC='rgba(255,255,255,.055)';
+const TC='#8892A8';
+
+let A=[
+  {n:'PETR4.SA',r:18,v:32},
+  {n:'VALE3.SA', r:14,v:28},
+  {n:'ITUB4.SA', r:12,v:22},
+  {n:'WEGE3.SA', r:16,v:24},
+];
+let COR=[[1,.35,.20,.15],[.35,1,.25,.10],[.20,.25,1,.30],[.15,.10,.30,1]];
+let OW=[],MW=[],EW=[],FR=[];
+let CH={};
+let OK=false;
+
+// ════════════════════════════════════════════
+// NAVIGATION
+// ════════════════════════════════════════════
+function go(i){
+  document.querySelectorAll('.pg').forEach((p,j)=>p.classList.toggle('on',j===i));
+  document.querySelectorAll('.nb').forEach((b,j)=>b.classList.toggle('on',j===i));
+  window.scrollTo(0,0);
+}
+function stab(btn,id){
+  const p=btn.closest('.pg')||document.body;
+  p.querySelectorAll('.tabs .tab').forEach(t=>t.classList.remove('on'));
+  btn.classList.add('on');
+  p.querySelectorAll('.tp').forEach(t=>t.classList.remove('on'));
+  document.getElementById(id).classList.add('on');
+}
+
+// ════════════════════════════════════════════
+// ASSET MANAGEMENT
+// ════════════════════════════════════════════
+function rA(){
+  const c=document.getElementById('ar');c.innerHTML='';
+  A.forEach((a,i)=>{
+    const d=document.createElement('div');d.className='arow';
+    d.innerHTML=
+      '<input type="text" value="'+a.n+'" placeholder="TICKER" onchange="A['+i+'].n=this.value;synC();rnC()">'+
+      '<input type="number" value="'+a.r+'" step="0.1" onchange="A['+i+'].r=parseFloat(this.value)||0">'+
+      '<input type="number" value="'+a.v+'" step="0.1" min="0.1" onchange="A['+i+'].v=parseFloat(this.value)||1">'+
+      '<button class="bdel" onclick="delA('+i+')">×</button>';
+    c.appendChild(d);
+  });
+  synC();rnC();
+}
+function synC(){
+  const n=A.length;
+  while(COR.length<n){COR.forEach(r=>{while(r.length<n)r.push(.2);});const nr=new Array(n).fill(.2);nr[n-1]=1;COR.push(nr);}
+  if(COR.length>n){COR=COR.slice(0,n).map(r=>r.slice(0,n));}
+  for(let i=0;i<n;i++)COR[i][i]=1;
+}
+function rnC(){
+  const n=A.length;const cw=Math.max(50,Math.floor(280/n));
+  let h='<table><tr><th></th>';
+  A.forEach(a=>h+='<th style="font-size:10px;color:var(--tx2);font-weight:600;padding:3px 4px;">'+a.n+'</th>');
+  h+='</tr>';
+  for(let i=0;i<n;i++){
+    h+='<tr><th style="font-size:10px;color:var(--tx2);text-align:left;padding:3px 5px;">'+A[i].n+'</th>';
+    for(let j=0;j<n;j++){
+      if(i===j) h+='<td style="font-size:10px;color:var(--tx3);padding:3px 4px;">1,00</td>';
+      else if(j>i) h+='<td style="padding:2px 3px;"><input type="number" value="'+COR[i][j].toFixed(2)+'" min="-1" max="1" step="0.01" style="width:'+cw+'px;text-align:center;padding:4px;" onchange="setC('+i+','+j+',this.value)"></td>';
+      else h+='<td style="font-size:10px;color:var(--tx2);padding:3px 4px;">'+COR[i][j].toFixed(2)+'</td>';
+    }
+    h+='</tr>';
+  }
+  document.getElementById('cm').innerHTML=h+'</table>';
+}
+function setC(i,j,v){const x=Math.max(-1,Math.min(1,parseFloat(v)||0));COR[i][j]=x;COR[j][i]=x;rnC();}
+function addA(){A.push({n:'ATIVO'+(A.length+1),r:10,v:20});rA();}
+function delA(i){if(A.length<=2){shErr('Mínimo de 2 ativos necessários.');return;}A.splice(i,1);COR.splice(i,1);COR.forEach(r=>r.splice(i,1));rA();}
+function shErr(m){const e=document.getElementById('err');e.textContent=m;setTimeout(()=>e.textContent='',5000);}
+
+// ════════════════════════════════════════════
+// IMPORT — YAHOO FINANCE
+// ════════════════════════════════════════════
+async function impY(){
+  const raw=document.getElementById('ytk').value.trim();
+  if(!raw){shErr('Digite ao menos um ticker.');return;}
+  const tks=raw.split(',').map(t=>t.trim().toUpperCase()).filter(Boolean);
+  const per=document.getElementById('yper').value;
+  const st=document.getElementById('yst');
+  st.innerHTML='<span class="badge binf">⏳ Buscando '+tks.length+' ativo(s)...</span>';
+  const res=[];
+  for(const tk of tks){
+    try{
+      const url='https://query1.finance.yahoo.com/v8/finance/chart/'+encodeURIComponent(tk)+'?interval=1mo&range='+per;
+      const r=await fetch('https://api.allorigins.win/get?url='+encodeURIComponent(url));
+      const j=await r.json();const d=JSON.parse(j.contents);
+      const cl=d?.chart?.result?.[0]?.indicators?.quote?.[0]?.close;
+      if(!cl||cl.length<3)throw new Error('dados insuficientes');
+      const vl=cl.filter(x=>x!=null&&!isNaN(x));
+      const rts=[];for(let i=1;i<vl.length;i++)rts.push((vl[i]-vl[i-1])/vl[i-1]);
+      const mn=rts.reduce((a,b)=>a+b,0)/rts.length;
+      const vr=rts.reduce((a,b)=>a+(b-mn)**2,0)/rts.length;
+      res.push({n:tk,r:parseFloat((mn*12*100).toFixed(1)),v:parseFloat((Math.sqrt(vr*12)*100).toFixed(1)),rts,ok:true});
+    }catch(e){res.push({n:tk,ok:false,rts:[]});}
+  }
+  const ok=res.filter(r=>r.ok);const fail=res.filter(r=>!r.ok);
+  if(ok.length>0){
+    A=ok.map(r=>({n:r.n,r:r.r,v:r.v}));
+    const n=ok.length;
+    COR=Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>{
+      if(i===j)return 1;
+      const ri=ok[i].rts,rj=ok[j].rts,len=Math.min(ri.length,rj.length);
+      const mi=ri.slice(-len).reduce((a,b)=>a+b,0)/len,mj=rj.slice(-len).reduce((a,b)=>a+b,0)/len;
+      const cv=ri.slice(-len).reduce((s,v,k)=>s+(v-mi)*(rj[rj.length-len+k]-mj),0)/len;
+      const si=Math.sqrt(ri.slice(-len).reduce((s,v)=>s+(v-mi)**2,0)/len);
+      const sj=Math.sqrt(rj.slice(-len).reduce((s,v)=>s+(v-mj)**2,0)/len);
+      return si*sj===0?0:parseFloat(Math.max(-1,Math.min(1,cv/(si*sj))).toFixed(2));
+    }));
+    rA();
+  }
+  let msg=ok.length>0?'<span class="badge bok">✓ '+ok.length+' importado(s)</span> ':'';
+  if(fail.length>0)msg+='<span class="badge berr">✗ Falhou: '+fail.map(r=>r.n).join(', ')+'</span>';
+  st.innerHTML=msg;
+}
+
+// ════════════════════════════════════════════
+// IMPORT — CSV
+// ════════════════════════════════════════════
+function doDrop(e){e.preventDefault();document.getElementById('dz').classList.remove('dg');const f=e.dataTransfer.files[0];if(f)rdFile(f);}
+function impF(e){const f=e.target.files[0];if(f)rdFile(f);}
+function rdFile(file){
+  const st=document.getElementById('xst');
+  st.innerHTML='<span class="badge binf">⏳ Lendo arquivo...</span>';
+  const rd=new FileReader();
+  rd.onload=function(e){
+    try{
+      const rows=e.target.result.split('\n').map(r=>r.split(/[,;]/).map(c=>c.trim().replace(/"/g,'')));
+      const start=isNaN(parseFloat(rows[0]?.[1]))?1:0;
+      const na=[];
+      for(let i=start;i<rows.length;i++){
+        const r=rows[i];if(!r||!r[0])continue;
+        const rv=parseFloat(r[1]);const vv=parseFloat(r[2]);
+        if(!isNaN(rv)&&!isNaN(vv))na.push({n:String(r[0]).trim(),r:rv,v:vv});
+      }
+      if(na.length<2){st.innerHTML='<span class="badge berr">Dados insuficientes. Verifique o formato.</span>';return;}
+      A=na;synC();rA();
+      st.innerHTML='<span class="badge bok">✓ '+na.length+' ativos importados com sucesso</span>';
+    }catch(er){st.innerHTML='<span class="badge berr">Erro: '+er.message+'</span>';}
+  };
+  rd.readAsText(file);
+}
+
+// ════════════════════════════════════════════
+// OPTIMIZATION ENGINE
+// ════════════════════════════════════════════
+function bCov(){
+  const n=A.length;
+  return Array.from({length:n},(_,i)=>Array.from({length:n},(_,j)=>COR[i][j]*(A[i].v/100)*(A[j].v/100)));
+}
+function pSt(w,cov){
+  let r=0;for(let i=0;i<w.length;i++)r+=w[i]*(A[i].r/100);
+  let v=0;for(let i=0;i<w.length;i++)for(let j=0;j<w.length;j++)v+=w[i]*w[j]*cov[i][j];
+  return{r,v:Math.sqrt(Math.max(0,v))};
+}
+function nm(w){const s=w.reduce((a,b)=>a+b,0);return s>0?w.map(x=>x/s):w;}
+function rW(n){return nm(Array.from({length:n},()=>Math.random()));}
+
+function optSh(cov,rf,it){
+  const n=A.length;let bs=-Infinity,bw=null;
+  for(let i=0;i<it;i++){const w=rW(n);const s=pSt(w,cov);const sh=(s.r-rf)/s.v;if(sh>bs){bs=sh;bw=w;}}
+  for(let s=0;s<500;s++)for(let i=0;i<n;i++){
+    let w=[...bw];w[i]+=(Math.random()-.5)*.04;
+    w=nm(w.map(x=>Math.max(0,x)));
+    const st=pSt(w,cov);const sh=(st.r-rf)/st.v;if(sh>bs){bs=sh;bw=w;}
+  }
+  return bw;
+}
+function optMV(cov,it){
+  const n=A.length;let bv=Infinity,bw=null;
+  for(let i=0;i<it;i++){const w=rW(n);const s=pSt(w,cov);if(s.v<bv){bv=s.v;bw=w;}}
+  for(let s=0;s<500;s++)for(let i=0;i<n;i++){
+    let w=[...bw];w[i]+=(Math.random()-.5)*.03;
+    w=nm(w.map(x=>Math.max(0,x)));
+    const st=pSt(w,cov);if(st.v<bv){bv=st.v;bw=w;}
+  }
+  return bw;
+}
+function bFR(cov,nP){
+  const n=A.length;
+  const mnR=Math.min(...A.map(a=>a.r/100)),mxR=Math.max(...A.map(a=>a.r/100));
+  const pts=[];
+  for(let k=0;k<=nP;k++){
+    const tg=mnR+(mxR-mnR)*k/nP;let bV=Infinity,bW=null;
+    for(let i=0;i<2500;i++){const w=rW(n);const s=pSt(w,cov);const p=Math.abs(s.r-tg)*50;if(s.v+p<bV){bV=s.v+p;bW=w;}}
+    for(let s=0;s<120;s++)for(let i=0;i<n;i++){
+      let w=[...bW];w[i]+=(Math.random()-.5)*.025;w=nm(w.map(x=>Math.max(0,x)));
+      const st=pSt(w,cov);const p=Math.abs(st.r-tg)*50;if(st.v+p<bV){bV=st.v+p;bW=w;}
+    }
+    const s=pSt(bW,cov);pts.push({v:s.v,r:s.r,w:bW});
+  }
+  return pts;
+}
+
+function runAll(){
+  const n=A.length;
+  for(let i=0;i<n;i++){
+    if(!A[i].n.trim()){shErr('Ativo '+(i+1)+' precisa de um nome.');return;}
+    if(A[i].v<=0){shErr('Volatilidade de "'+A[i].n+'" deve ser maior que 0.');return;}
+  }
+  const cst=document.getElementById('cst');
+  cst.innerHTML='<span class="badge binf">⚙ Otimizando portfólios... aguarde alguns segundos.</span>';
+  setTimeout(()=>{
+    const rf=parseFloat(document.getElementById('rf').value||0)/100;
+    const cov=bCov();
+    OW=optSh(cov,rf,12000);
+    MW=optMV(cov,12000);
+    EW=Array(n).fill(1/n);
+    FR=bFR(cov,55);
+    OK=true;
+    cst.innerHTML='<span class="badge bok">✓ Calculado com sucesso — '+new Date().toLocaleTimeString('pt-BR')+'</span>';
+    bDash(cov,rf);bFront(cov,rf);bCmp(cov,rf);bHeat();bIbov(cov,rf);bRep();
+  },40);
+}
+
+// ════════════════════════════════════════════
+// CHART HELPERS
+// ════════════════════════════════════════════
+function dc(id){if(CH[id]){CH[id].destroy();delete CH[id];}}
+function pie(id,w,lid){
+  dc(id);
+  CH[id]=new Chart(document.getElementById(id),{
+    type:'doughnut',
+    data:{labels:A.map(a=>a.n),datasets:[{data:w.map(v=>parseFloat((v*100).toFixed(1))),backgroundColor:PAL,borderWidth:2,borderColor:'#13161D'}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'56%',plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.label}: ${c.parsed.toFixed(1)}%`}}}}
+  });
+  if(lid)document.getElementById(lid).innerHTML=A.map((a,i)=>'<span><span class="ld" style="background:'+PAL[i%PAL.length]+';"></span>'+a.n+': '+(w[i]*100).toFixed(1)+'%</span>').join('');
+}
+const scX=(t)=>({title:{display:true,text:t,color:TC,font:{size:11}},grid:{color:GC},ticks:{color:TC,callback:v=>v+'%',font:{size:11}}});
+const scY=(t)=>({title:{display:true,text:t,color:TC,font:{size:11}},grid:{color:GC},ticks:{color:TC,callback:v=>v+'%',font:{size:11}}});
+
+// ════════════════════════════════════════════
+// DASHBOARD
+// ════════════════════════════════════════════
+function bDash(cov,rf){
+  show('d1e','d1c');
+  const s=pSt(OW,cov);const sh=(s.r-rf)/s.v;
+  document.getElementById('d1m').innerHTML=
+    '<div class="mc"><div class="ml">Retorno esperado</div><div class="mv cb">'+f1(s.r*100)+'%</div><div class="ms">ao ano</div></div>'+
+    '<div class="mc"><div class="ml">Risco (Volatilidade)</div><div class="mv ca">'+f1(s.v*100)+'%</div><div class="ms">ao ano</div></div>'+
+    '<div class="mc"><div class="ml">Índice de Sharpe</div><div class="mv cg">'+sh.toFixed(2)+'</div><div class="ms">retorno por unidade de risco</div></div>'+
+    '<div class="mc"><div class="ml">Taxa livre de risco</div><div class="mv" style="color:var(--tx2);">'+f1(rf*100)+'%</div><div class="ms">referência Selic</div></div>';
+  pie('pie1',OW,'l1');pie('pie2',MW,'l2');
+  const pf=[{n:'Máx. Sharpe',w:OW,c:PAL[0]},{n:'Mín. Variância',w:MW,c:PAL[2]},{n:'Pesos Iguais',w:EW,c:PAL[1]}];
+  let h='<thead><tr><th>Portfólio</th><th>Retorno</th><th>Risco</th><th>Sharpe</th>'+A.map(a=>'<th>'+a.n+'</th>').join('')+'</tr></thead><tbody>';
+  pf.forEach(p=>{const s=pSt(p.w,cov);const sh=(s.r-rf)/s.v;h+='<tr><td><span class="ld" style="background:'+p.c+';"></span>'+p.n+'</td><td>'+f1(s.r*100)+'%</td><td>'+f1(s.v*100)+'%</td><td>'+sh.toFixed(2)+'</td>'+p.w.map(v=>'<td>'+f1(v*100)+'%</td>').join('')+'</tr>';});
+  document.getElementById('d1t').innerHTML=h+'</tbody>';
+}
+
+// ════════════════════════════════════════════
+// FRONTIER
+// ════════════════════════════════════════════
+function bFront(cov,rf){
+  show('d2e','d2c');
+  const os=pSt(OW,cov),ms=pSt(MW,cov);
+  const mxV=Math.max(...FR.map(p=>p.v),os.v,...A.map(a=>a.v/100))*1.1;
+  const cE={x:f2(mxV*100),y:f2((rf+(os.r-rf)/os.v*mxV)*100)};
+  dc('efc');
+  CH['efc']=new Chart(document.getElementById('efc'),{
+    type:'scatter',
+    data:{datasets:[
+      {label:'Fronteira Eficiente',data:FR.map(p=>({x:f2(p.v*100),y:f2(p.r*100)})),borderColor:PAL[0],backgroundColor:'rgba(79,126,255,.06)',showLine:true,tension:.35,pointRadius:1.5,borderWidth:2,fill:false},
+      {label:'CML',data:[{x:0,y:f2(rf*100)},{x:cE.x,y:cE.y}],borderColor:PAL[1],borderDash:[5,4],showLine:true,pointRadius:0,borderWidth:1.5},
+      {label:'Carteira ótima',data:[{x:f2(os.v*100),y:f2(os.r*100)}],backgroundColor:PAL[0],borderColor:PAL[0],pointRadius:11,pointHoverRadius:14},
+      {label:'Mínima variância',data:[{x:f2(ms.v*100),y:f2(ms.r*100)}],backgroundColor:PAL[2],borderColor:PAL[2],pointRadius:10,pointStyle:'rect'},
+      {label:'Ativos',data:A.map(a=>({x:a.v,y:a.r,label:a.n})),backgroundColor:'#8892A8',borderColor:'#8892A8',pointRadius:7,pointStyle:'triangle'},
+    ]},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>{if(c.dataset.label==='Ativos')return c.raw.label+': Ret '+c.raw.y+'%, Vol '+c.raw.x+'%';return 'Ret '+c.parsed.y.toFixed(1)+'%, Vol '+c.parsed.x.toFixed(1)+'%';}}}},
+      scales:{x:scX('Risco — Volatilidade (%/ano)'),y:scY('Retorno esperado (%/ano)')}
+    }
+  });
+  document.getElementById('efl').innerHTML=[[PAL[0],'Fronteira Eficiente'],[PAL[1],'CML (Linha de Mercado)'],[PAL[0],'Carteira ótima ●'],[PAL[2],'Mínima variância ■'],['#8892A8','Ativos individuais ▲']].map(([c,l])=>'<span><span class="ld" style="background:'+c+';"></span>'+l+'</span>').join('');
+  dc('alc');
+  CH['alc']=new Chart(document.getElementById('alc'),{
+    type:'bar',
+    data:{labels:FR.map(p=>f1(p.v*100)+'%'),datasets:A.map((a,i)=>({label:a.n,data:FR.map(p=>parseFloat((p.w[i]*100).toFixed(1))),backgroundColor:PAL[i%PAL.length],stack:'s'}))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{stacked:true,grid:{color:GC},ticks:{autoSkip:true,maxTicksLimit:9,color:TC,font:{size:10}}},y:{stacked:true,max:100,grid:{color:GC},ticks:{color:TC,callback:v=>v+'%',font:{size:10}}}}}
+  });
+  document.getElementById('all').innerHTML=A.map((a,i)=>'<span><span class="ld" style="background:'+PAL[i%PAL.length]+';"></span>'+a.n+'</span>').join('');
+}
+
+// ════════════════════════════════════════════
+// COMPARISON
+// ════════════════════════════════════════════
+function bCmp(cov,rf){
+  show('d3e','d3c');
+  const pf=[{n:'Máx. Sharpe',w:OW,c:PAL[0]},{n:'Mín. Variância',w:MW,c:PAL[2]},{n:'Pesos Iguais',w:EW,c:PAL[1]}];
+  const sts=pf.map(p=>({...p,s:pSt(p.w,cov)}));
+  const shs=sts.map(p=>(p.s.r-rf)/p.s.v);
+  dc('cmc');
+  CH['cmc']=new Chart(document.getElementById('cmc'),{
+    type:'scatter',
+    data:{datasets:sts.map(p=>({label:p.n,data:[{x:f2(p.s.v*100),y:f2(p.s.r*100)}],backgroundColor:p.c,borderColor:p.c,pointRadius:15,pointHoverRadius:18}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:TC,font:{size:11}}},tooltip:{callbacks:{label:c=>c.dataset.label+': Ret '+c.parsed.y.toFixed(1)+'%, Vol '+c.parsed.x.toFixed(1)+'%'}}},
+      scales:{x:scX('Risco (%/ano)'),y:scY('Retorno (%/ano)')}
+    }
+  });
+  const mxS=Math.max(...shs),mnV=Math.min(...sts.map(p=>p.s.v)),mxR=Math.max(...sts.map(p=>p.s.r));
+  let h='<thead><tr><th>Portfólio</th><th>Retorno</th><th>Risco</th><th>Índice de Sharpe</th></tr></thead><tbody>';
+  sts.forEach((p,i)=>{
+    const wS=Math.abs(shs[i]-mxS)<.001,wV=Math.abs(p.s.v-mnV)<.0001,wR=Math.abs(p.s.r-mxR)<.0001;
+    h+='<tr><td><span class="ld" style="background:'+p.c+';"></span>'+p.n+'</td>'+
+       '<td class="'+(wR?'win':'')+'">'+f1(p.s.r*100)+'% '+(wR?'🏆':'')+'</td>'+
+       '<td class="'+(wV?'win':'')+'">'+f1(p.s.v*100)+'% '+(wV?'🏆':'')+'</td>'+
+       '<td class="'+(wS?'win':'')+'">'+shs[i].toFixed(2)+' '+(wS?'🏆':'')+'</td></tr>';
+  });
+  document.getElementById('cmt').innerHTML=h+'</tbody>';
+  dc('cac');
+  CH['cac']=new Chart(document.getElementById('cac'),{
+    type:'bar',
+    data:{labels:A.map(a=>a.n),datasets:pf.map(p=>({label:p.n,data:p.w.map(v=>parseFloat((v*100).toFixed(1))),backgroundColor:p.c}))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:TC,font:{size:11}}}},
+      scales:{x:{grid:{color:GC},ticks:{color:TC,font:{size:11}}},y:{grid:{color:GC},ticks:{color:TC,callback:v=>v+'%',font:{size:11}}}}}
+  });
+}
+
+// ════════════════════════════════════════════
+// HEATMAP
+// ════════════════════════════════════════════
+function bHeat(){
+  show('d4e','d4c');
+  const n=A.length;const cs=Math.max(44,Math.min(70,Math.floor(300/n)));
+  let h='<div style="display:inline-block;"><div style="display:flex;"><div style="width:'+cs+'px;"></div>';
+  A.forEach(a=>h+='<div style="width:'+cs+'px;text-align:center;font-size:10px;color:var(--tx2);font-weight:600;padding:2px;">'+a.n+'</div>');
+  h+='</div>';
+  for(let i=0;i<n;i++){
+    h+='<div style="display:flex;align-items:center;">';
+    h+='<div style="width:'+cs+'px;font-size:10px;color:var(--tx2);font-weight:600;padding:2px 3px;text-align:right;">'+A[i].n+'</div>';
+    for(let j=0;j<n;j++){
+      const vl=COR[i][j];let r,g,b;
+      if(vl>=0){r=Math.round(79+vl*(0-79));g=Math.round(126+vl*(200-126));b=Math.round(255+vl*(150-255));}
+      else{const t=-vl;r=Math.round(79+t*(255-79));g=Math.round(126+t*(77-126));b=Math.round(255+t*(106-255));}
+      const bg='rgb('+r+','+g+','+b+')';const fc=Math.abs(vl)>.45?'#fff':'var(--tx)';
+      h+='<div title="'+A[i].n+'×'+A[j].n+': '+vl.toFixed(2)+'" style="width:'+cs+'px;height:'+cs+'px;line-height:'+cs+'px;text-align:center;font-size:10px;font-weight:700;background:'+bg+';color:'+fc+';border-radius:3px;margin:1px;">'+vl.toFixed(2)+'</div>';
+    }
+    h+='</div>';
+  }
+  document.getElementById('hm').innerHTML=h+'</div>';
+  let th='<thead><tr><th>Par de ativos</th><th>Correlação</th><th>Interpretação</th></tr></thead><tbody>';
+  for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){
+    const vl=COR[i][j];
+    const col=vl>.3?'var(--gr)':vl<-.3?'var(--rd)':'var(--tx)';
+    const interp=vl>.7?'Alta positiva':vl>.3?'Moderada positiva':vl>-.3?'Baixa / praticamente nula':vl>-.7?'Moderada negativa':'Alta negativa';
+    th+='<tr><td>'+A[i].n+' × '+A[j].n+'</td><td style="color:'+col+';font-weight:600;">'+vl.toFixed(2)+'</td><td>'+interp+'</td></tr>';
+  }
+  document.getElementById('hmt').innerHTML=th+'</tbody>';
+}
+
+// ════════════════════════════════════════════
+// IBOVESPA
+// ════════════════════════════════════════════
+function bIbov(cov,rf){
+  show('d5e','d5c');
+  const ibR=parseFloat(document.getElementById('ibr').value||14)/100;
+  const ibV=.20;const ibSh=(ibR-rf)/ibV;
+  const os=pSt(OW,cov);const oSh=(os.r-rf)/os.v;
+  const rd=(os.r-ibR)*100;const vd=(os.v-ibV)*100;
+  document.getElementById('d5m').innerHTML=
+    '<div class="mc"><div class="ml">Sharpe — Carteira ótima</div><div class="mv cg">'+oSh.toFixed(2)+'</div></div>'+
+    '<div class="mc"><div class="ml">Sharpe — Ibovespa</div><div class="mv ca">'+ibSh.toFixed(2)+'</div></div>'+
+    '<div class="mc"><div class="ml">Retorno extra vs Ibov</div><div class="mv '+(rd>=0?'cg':'cr')+'">'+(rd>=0?'+':'')+f1(rd)+'%</div></div>'+
+    '<div class="mc"><div class="ml">Risco vs Ibov</div><div class="mv '+(vd<=0?'cg':'ca')+'">'+(vd>=0?'+':'')+f1(vd)+'%</div></div>';
+  const pf=[{n:'Máx. Sharpe',s:os,c:PAL[0]},{n:'Mín. Variância',s:pSt(MW,cov),c:PAL[2]},{n:'Pesos Iguais',s:pSt(EW,cov),c:PAL[1]},{n:'Ibovespa',s:{r:ibR,v:ibV},c:'#FF4D6A'}];
+  dc('ibc');
+  CH['ibc']=new Chart(document.getElementById('ibc'),{
+    type:'scatter',
+    data:{datasets:pf.map(p=>({label:p.n,data:[{x:f2(p.s.v*100),y:f2(p.s.r*100)}],backgroundColor:p.c,borderColor:p.c,pointRadius:15,pointHoverRadius:18}))},
+    options:{responsive:true,maintainAspectRatio:false,
+      plugins:{legend:{labels:{color:TC,font:{size:11}}},tooltip:{callbacks:{label:c=>c.dataset.label+': Ret '+c.parsed.y.toFixed(1)+'%, Vol '+c.parsed.x.toFixed(1)+'%'}}},
+      scales:{x:scX('Risco (%/ano)'),y:scY('Retorno (%/ano)')}
+    }
+  });
+  document.getElementById('ibl').innerHTML='';
+  let th='<thead><tr><th>Portfólio</th><th>Retorno</th><th>Risco</th><th>Sharpe</th><th>vs Ibovespa</th></tr></thead><tbody>';
+  pf.forEach(p=>{const sh=(p.s.r-rf)/p.s.v;const vs=sh-ibSh;th+='<tr><td><span class="ld" style="background:'+p.c+';"></span>'+p.n+'</td><td>'+f1(p.s.r*100)+'%</td><td>'+f1(p.s.v*100)+'%</td><td>'+sh.toFixed(2)+'</td><td style="color:'+(vs>=0?'var(--gr)':'var(--rd)')+';">'+(vs>=0?'+':'')+vs.toFixed(2)+'</td></tr>';});
+  document.getElementById('ibt').innerHTML=th+'</tbody>';
+}
+
+// ════════════════════════════════════════════
+// PROFILE
+// ════════════════════════════════════════════
+function selP(p,el){
+  document.querySelectorAll('.pcard').forEach(c=>c.classList.remove('sel'));
+  el.classList.add('sel');
+  document.getElementById('pe').style.display='none';
+  document.getElementById('pc').style.display='block';
+  if(!OK){document.getElementById('pr').innerHTML='<p style="color:var(--tx2);font-size:13px;padding:.5rem 0;">Calcule o portfólio primeiro para ver a recomendação personalizada.</p>';return;}
+  const cov=bCov();const rf=parseFloat(document.getElementById('rf').value||0)/100;
+  const cf={
+    con:{w:MW,col:'var(--gr)',desc:'Seu perfil <strong>conservador</strong> indica a carteira de <strong>mínima variância</strong> — minimiza o risco total, ideal para quem tolera pouca volatilidade e foca no curto a médio prazo.'},
+    mod:{w:OW,col:'var(--gd)',desc:'Seu perfil <strong>moderado</strong> indica a carteira de <strong>máximo Índice de Sharpe</strong> — obtém o melhor equilíbrio entre retorno e risco, adequada para horizontes de médio prazo.'},
+    arr:{w:FR[FR.length-1]?.w||OW,col:'var(--rd)',desc:'Seu perfil <strong>arrojado</strong> indica o portfólio no <strong>topo da fronteira eficiente</strong> — maximiza o retorno esperado aceitando maior volatilidade, adequado para longo prazo.'},
+  };
+  const c=cf[p];const s=pSt(c.w,cov);const sh=(s.r-rf)/s.v;
+  document.getElementById('pr').innerHTML=
+    '<div style="font-size:13px;color:var(--tx2);line-height:1.7;margin-bottom:.75rem;">'+c.desc+'</div>'+
+    '<div class="g3" style="gap:8px;">'+
+      '<div class="mc"><div class="ml">Retorno esperado</div><div class="mv" style="font-size:18px;color:'+c.col+';">'+f1(s.r*100)+'%</div></div>'+
+      '<div class="mc"><div class="ml">Risco</div><div class="mv ca" style="font-size:18px;">'+f1(s.v*100)+'%</div></div>'+
+      '<div class="mc"><div class="ml">Índice de Sharpe</div><div class="mv cg" style="font-size:18px;">'+sh.toFixed(2)+'</div></div>'+
+    '</div>';
+  pie('pie3',c.w,'l3');
+}
+
+// ════════════════════════════════════════════
+// REPORT & EXPORT
+// ════════════════════════════════════════════
+function bRep(){
+  show('d7e','d7c');updPv();
+}
+function updPv(){
+  if(!OK)return;
+  const cov=bCov();const rf=parseFloat(document.getElementById('rf').value||0)/100;
+  const os=pSt(OW,cov);const ms=pSt(MW,cov);const es=pSt(EW,cov);
+  document.getElementById('rpv').innerHTML=
+    '<strong>'+(document.getElementById('rti').value||'Análise de Portfólio — MPT')+'</strong><br>'+
+    '<span style="color:var(--tx3);">'+(document.getElementById('rau').value||'Autor')+' | '+(document.getElementById('rin').value||'Instituição')+' | '+new Date().toLocaleDateString('pt-BR')+'</span><br><br>'+
+    '<strong>Ativos:</strong> '+A.map(a=>a.n).join(', ')+'<br>'+
+    '<strong>Taxa livre de risco:</strong> '+f1(rf*100)+'%/ano<br><br>'+
+    '<strong>Máx. Sharpe:</strong> Retorno '+f1(os.r*100)+'%, Risco '+f1(os.v*100)+'%, Sharpe '+((os.r-rf)/os.v).toFixed(2)+'<br>'+
+    '<strong>Mín. Variância:</strong> Retorno '+f1(ms.r*100)+'%, Risco '+f1(ms.v*100)+'%, Sharpe '+((ms.r-rf)/ms.v).toFixed(2)+'<br>'+
+    '<strong>Pesos Iguais:</strong> Retorno '+f1(es.r*100)+'%, Risco '+f1(es.v*100)+'%, Sharpe '+((es.r-rf)/es.v).toFixed(2);
+}
+function dl(c,n,m){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c],{type:m}));a.download=n;document.body.appendChild(a);a.click();document.body.removeChild(a);}
+function exCSV(){
+  if(!OK)return;
+  let c='Vol_%,Ret_%,'+A.map(a=>a.n+'_w%').join(',')+'\n';
+  FR.forEach(p=>{c+=f2(p.v*100)+','+f2(p.r*100)+','+p.w.map(v=>f2(v*100)).join(',')+'\n';});
+  dl(c,'fronteira_markowitzlab.csv','text/csv');
+}
+function exJSON(){
+  if(!OK)return;
+  const cov=bCov();const rf=parseFloat(document.getElementById('rf').value||0)/100;
+  const os=pSt(OW,cov);const ms=pSt(MW,cov);
+  dl(JSON.stringify({
+    ferramenta:'MarkowitzLab v2.0',gerado:new Date().toISOString(),
+    parametros:{taxa_rf_pct:parseFloat(f2(rf*100)),ativos:A.map(a=>({ticker:a.n,retorno_pct:a.r,volatilidade_pct:a.v})),correlacoes:COR},
+    carteira_otima:{pesos:Object.fromEntries(A.map((a,i)=>[a.n,parseFloat(f2(OW[i]*100))])),retorno_pct:parseFloat(f2(os.r*100)),vol_pct:parseFloat(f2(os.v*100)),sharpe:parseFloat(((os.r-rf)/os.v).toFixed(3))},
+    minima_variancia:{pesos:Object.fromEntries(A.map((a,i)=>[a.n,parseFloat(f2(MW[i]*100))])),retorno_pct:parseFloat(f2(ms.r*100)),vol_pct:parseFloat(f2(ms.v*100))},
+    fronteira_eficiente:FR.map(p=>({vol_pct:parseFloat(f2(p.v*100)),ret_pct:parseFloat(f2(p.r*100)),pesos:Object.fromEntries(A.map((a,i)=>[a.n,parseFloat(f2(p.w[i]*100))]))}))
+  },null,2),'portfolio_markowitzlab.json','application/json');
+}
+function genR(){
+  if(!OK)return;
+  const cov=bCov();const rf=parseFloat(document.getElementById('rf').value||0)/100;
+  const os=pSt(OW,cov);const ms=pSt(MW,cov);const es=pSt(EW,cov);
+  const au=document.getElementById('rau').value||'—';
+  const ins=document.getElementById('rin').value||'—';
+  const tit=document.getElementById('rti').value||'Análise de Portfólio — Teoria Moderna do Portfólio';
+  const ibR=parseFloat(document.getElementById('ibr').value||14)/100;
+  const ibSh=(ibR-rf)/.20;
+  const n=A.length;let cRows='';
+  for(let i=0;i<n;i++)for(let j=i+1;j<n;j++){
+    const vl=COR[i][j];
+    cRows+='<tr><td>'+A[i].n+' × '+A[j].n+'</td><td style="text-align:center;font-weight:700;color:'+(vl>.3?'#1baf7a':vl<-.3?'#e34948':'#333')+';">'+vl.toFixed(2)+'</td><td>'+(vl>.7?'Alta positiva':vl>.3?'Moderada positiva':vl>-.3?'Baixa / nula':vl>-.7?'Moderada negativa':'Alta negativa')+'</td></tr>';
+  }
+  const html='<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+tit+' — MarkowitzLab</title>'+
+'<style>*{box-sizing:border-box;margin:0;padding:0;}body{font-family:"Segoe UI",system-ui,sans-serif;color:#1a1a2e;background:#fff;font-size:13px;line-height:1.6;}'+
+'.cover{background:#0D0F14;color:#fff;padding:2.5rem 2rem;page-break-after:avoid;}'+
+'.cover small{font-size:10px;opacity:.35;text-transform:uppercase;letter-spacing:.12em;display:block;margin-bottom:.5rem;}'+
+'.cover h1{font-size:22px;font-weight:700;letter-spacing:-.4px;margin-bottom:.35rem;}'+
+'.cover p{font-size:12px;opacity:.5;}'+
+'.wrap{max-width:860px;margin:0 auto;padding:1.75rem 2rem;}'+
+'h2{font-size:14px;font-weight:700;margin:1.75rem 0 .6rem;padding-bottom:.35rem;border-bottom:2px solid #4F7EFF;letter-spacing:-.1px;}'+
+'.g4{display:grid;grid-template-columns:repeat(4,1fr);gap:.5rem;margin:.65rem 0;}'+
+'.mc{background:#f4f6fc;border:1px solid #e0e4f0;border-radius:6px;padding:.65rem .85rem;}'+
+'.ml{font-size:10px;color:#666;margin-bottom:2px;font-weight:500;}'+
+'.mv{font-size:18px;font-weight:700;}'+
+'table{width:100%;border-collapse:collapse;font-size:12px;margin:.5rem 0;}'+
+'th{background:#f0f2fa;padding:6px 9px;text-align:left;font-weight:600;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#555;}'+
+'td{padding:6px 9px;border-bottom:1px solid #e8eaf0;}tr:last-child td{border-bottom:none;}'+
+'.note{font-size:11px;color:#888;font-style:italic;line-height:1.6;margin-top:1.5rem;padding:1rem;background:#fff8ee;border:1px solid #fbd96a;border-radius:6px;}'+
+'@media print{.cover{print-color-adjust:exact;-webkit-print-color-adjust:exact;}.g4{grid-template-columns:repeat(4,1fr);}h2{page-break-after:avoid;}table{page-break-inside:avoid;}}'+
+'</style></head><body>'+
+'<div class="cover"><small>MarkowitzLab — Relatório de Análise</small><h1>'+tit+'</h1><p>'+au+' &nbsp;|&nbsp; '+ins+' &nbsp;|&nbsp; '+new Date().toLocaleDateString('pt-BR',{day:'2-digit',month:'long',year:'numeric'})+'</p></div>'+
+'<div class="wrap">'+
+'<h2>1. Ativos analisados</h2>'+
+'<table><tr><th>Ticker</th><th>Retorno esperado (%/ano)</th><th>Volatilidade (%/ano)</th></tr>'+A.map(a=>'<tr><td>'+a.n+'</td><td>'+a.r.toFixed(1)+'%</td><td>'+a.v.toFixed(1)+'%</td></tr>').join('')+'</table>'+
+'<p style="font-size:11px;color:#666;margin-top:.4rem;">Taxa livre de risco utilizada: <strong>'+f1(rf*100)+'%</strong> ao ano. Retorno Ibovespa de referência: <strong>'+f1(ibR*100)+'%</strong> ao ano.</p>'+
+'<h2>2. Carteira de Máximo Índice de Sharpe</h2>'+
+'<div class="g4"><div class="mc"><div class="ml">Retorno</div><div class="mv" style="color:#2a78d6;">'+f1(os.r*100)+'%</div></div><div class="mc"><div class="ml">Risco</div><div class="mv" style="color:#eda100;">'+f1(os.v*100)+'%</div></div><div class="mc"><div class="ml">Sharpe</div><div class="mv" style="color:#1baf7a;">'+((os.r-rf)/os.v).toFixed(2)+'</div></div><div class="mc"><div class="ml">Retorno líquido</div><div class="mv">'+f1((os.r-rf)*100)+'%</div></div></div>'+
+'<table><tr><th>Ativo</th><th>Peso na carteira</th></tr>'+A.map((a,i)=>'<tr><td>'+a.n+'</td><td>'+f1(OW[i]*100)+'%</td></tr>').join('')+'</table>'+
+'<h2>3. Portfólio de Mínima Variância</h2>'+
+'<div class="g4"><div class="mc"><div class="ml">Retorno</div><div class="mv" style="color:#2a78d6;">'+f1(ms.r*100)+'%</div></div><div class="mc"><div class="ml">Risco</div><div class="mv" style="color:#1baf7a;">'+f1(ms.v*100)+'%</div></div><div class="mc"><div class="ml">Sharpe</div><div class="mv">'+((ms.r-rf)/ms.v).toFixed(2)+'</div></div></div>'+
+'<table><tr><th>Ativo</th><th>Peso na carteira</th></tr>'+A.map((a,i)=>'<tr><td>'+a.n+'</td><td>'+f1(MW[i]*100)+'%</td></tr>').join('')+'</table>'+
+'<h2>4. Comparação entre portfólios</h2>'+
+'<table><tr><th>Portfólio</th><th>Retorno</th><th>Risco</th><th>Sharpe</th>'+A.map(a=>'<th>'+a.n+'</th>').join('')+'</tr>'+
+[{n:'Máx. Sharpe',w:OW,s:os},{n:'Mín. Variância',w:MW,s:ms},{n:'Pesos Iguais',w:EW,s:es}].map(p=>'<tr><td>'+p.n+'</td><td>'+f1(p.s.r*100)+'%</td><td>'+f1(p.s.v*100)+'%</td><td>'+((p.s.r-rf)/p.s.v).toFixed(2)+'</td>'+p.w.map(v=>'<td>'+f1(v*100)+'%</td>').join('')+'</tr>').join('')+'</table>'+
+'<h2>5. Comparação com Ibovespa</h2>'+
+'<table><tr><th>Portfólio</th><th>Retorno</th><th>Risco</th><th>Sharpe</th><th>vs Ibovespa (Sharpe)</th></tr>'+
+[{n:'Máx. Sharpe',s:os},{n:'Mín. Variância',s:ms},{n:'Pesos Iguais',s:es},{n:'Ibovespa (referência)',s:{r:ibR,v:.20}}].map(p=>{const sh=(p.s.r-rf)/p.s.v;const vs=sh-ibSh;return'<tr><td>'+p.n+'</td><td>'+f1(p.s.r*100)+'%</td><td>'+f1(p.s.v*100)+'%</td><td>'+sh.toFixed(2)+'</td><td style="color:'+(p.n.includes('Ibov')?'#333':vs>=0?'#1baf7a':'#e34948')+';">'+(p.n.includes('Ibov')?'—':vs>=0?'+'+vs.toFixed(2):vs.toFixed(2))+'</td></tr>';}).join('')+'</table>'+
+'<h2>6. Matriz de correlações</h2>'+
+'<table><tr><th>Par de ativos</th><th style="text-align:center;">Correlação</th><th>Interpretação</th></tr>'+cRows+'</table>'+
+'<h2>7. Metodologia</h2>'+
+'<p style="font-size:12px;line-height:1.8;color:#333;">Otimização realizada com base na Teoria Moderna do Portfólio de Harry Markowitz (1952), utilizando simulação de Monte Carlo com mais de 10.000 portfólios aleatórios e refinamento iterativo por gradiente estocástico. A fronteira eficiente representa o conjunto de portfólios com mínima variância para cada nível de retorno esperado. O Índice de Sharpe (Sharpe, 1966) mede o excesso de retorno por unidade de risco. Taxa livre de risco: '+f1(rf*100)+'%/ano.</p>'+
+'<h2>8. Referências</h2>'+
+'<p style="font-size:12px;line-height:2;color:#333;">MARKOWITZ, H. Portfolio Selection. <em>The Journal of Finance</em>, v.7, n.1, p.77–91, 1952.<br>SHARPE, W. F. Mutual Fund Performance. <em>The Journal of Business</em>, v.39, n.1, p.119–138, 1966.<br>ELTON, E. J. et al. <em>Modern Portfolio Theory and Investment Analysis</em>. 9.ed. Wiley, 2014.</p>'+
+'<div class="note">⚠ <strong>Aviso importante:</strong> Este relatório foi gerado pela ferramenta educacional MarkowitzLab e tem fins exclusivamente acadêmicos. Os resultados são baseados em estimativas e dados históricos. Retornos passados não garantem resultados futuros. Este documento não constitui recomendação de investimento. Consulte um profissional certificado pela CVM antes de tomar decisões financeiras.</div>'+
+'</div><script>window.onload=()=>setTimeout(()=>window.print(),700);<\/script></body></html>';
+  dl(html,'relatorio_markowitzlab.html','text/html');
+}
+
+// ════════════════════════════════════════════
+// UTILS
+// ════════════════════════════════════════════
+function f1(n){return parseFloat(n.toFixed(1));}
+function f2(n){return parseFloat(n.toFixed(2));}
+function show(empId,conId){
+  document.getElementById(empId).style.display='none';
+  document.getElementById(conId).style.display='block';
+}
+
+// ════════════════════════════════════════════
+// INIT
+// ════════════════════════════════════════════
+rA();
+</script>
+</body>
+</html>
